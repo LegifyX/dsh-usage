@@ -126,7 +126,7 @@ function TotalsRow(props: { totals: UsageTokenTotals }): ReactNode {
 /** One wallet total with its currency symbol (CNY/USD) or ISO code. */
 function walletText(balance: BalanceView): string {
   const currency = balance.currency.toUpperCase()
-  if (currency === 'CNY') return 'Â¥' + balance.totalBalance
+  if (currency === 'CNY') return '¥' + balance.totalBalance
   if (currency === 'USD') return '$' + balance.totalBalance
   return currency + ' ' + balance.totalBalance
 }
@@ -141,7 +141,7 @@ function balanceLine(provider: ProviderSnapshotView): ReactNode {
       <span className={styles.providerBalance}>
         {balances.map((entry, index) => (
           <span key={entry.currency}>
-            {index > 0 ? ' Â· ' : ''}
+            {index > 0 ? ' · ' : ''}
             {walletText(entry)}
           </span>
         ))}
@@ -256,7 +256,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const [refreshing, setRefreshing] = useState(false)
   const enabled = card.enabled.text !== 'false'
 
-  // Poll while mounted, enabled and visible; the overview is cheap (no probes â€”
+  // Poll while mounted, enabled and visible; the overview is cheap (no probes —
   // the host's own cycle owns those) so 10 s keeps balances fresh-ish between
   // manual refreshes.
   useEffect(() => {
@@ -360,7 +360,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           {/* The cards below already say when there is no usage; without a current route the slot stays empty. */}
           <span className={styles.currentProvider}>
             {currentProvider !== undefined
-              ? `${currentProvider.displayName}${current.model !== undefined && current.model !== '' ? ' Â· ' + current.model : ''}`
+              ? `${currentProvider.displayName}${current.model !== undefined && current.model !== '' ? ' · ' + current.model : ''}`
               : null}
           </span>
           <span className={styles.headerActions}>
@@ -423,7 +423,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                         {snapshot.providers.find((provider) => provider.provider === row.provider)?.displayName ?? row.provider}
                         {current.provider === row.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
                       </span>
-                      <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} Â· {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` Â· ${formatSpend(row.totals.cost, snapshot.display)}` : ''}</span>
+                      <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` · ${formatSpend(row.totals.cost, snapshot.display)}` : ''}</span>
                     </div>
                   ))}
                 </div>
@@ -538,7 +538,7 @@ function ChartProviderRow(props: { row: UsageProviderSummary; name: string; max:
           {name}
           {current && <span className={styles.currentBadge}>{t('usage.current')}</span>}
         </span>
-        <span className={styles.chartTokens}>{formatTokens(total)} Â· {t('usage.calls', { n: row.totals.calls })}</span>
+        <span className={styles.chartTokens}>{formatTokens(total)} · {t('usage.calls', { n: row.totals.calls })}</span>
       </span>
       <span className={styles.chartBar}>
         <span className={styles.chartFill} style={{ width: `${Math.max(2, Math.round((total / max) * 100))}%` }} />
@@ -546,7 +546,7 @@ function ChartProviderRow(props: { row: UsageProviderSummary; name: string; max:
       {row.models.slice(0, CHART_MODEL_CAP).map((model) => {
         const modelTotal = totalOf(model.totals)
         return (
-          <span key={model.model} className={styles.chartModel} title={`${row.provider} Â· ${model.model}: ${formatTokens(modelTotal)}`}>
+          <span key={model.model} className={styles.chartModel} title={`${row.provider} · ${model.model}: ${formatTokens(modelTotal)}`}>
             <span className={styles.chartModelName}>{model.model}</span>
             <span className={styles.chartModelBar}>
               <span className={styles.chartModelFill} style={{ width: `${Math.max(3, Math.round((modelTotal / maxModel) * 100))}%` }} />
@@ -675,7 +675,7 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
         <span className={styles.planName}>
           {provider.displayName}
           {current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
-          {provider.plan?.planName !== undefined ? ` Â· ${provider.plan.planName}` : ''}
+          {provider.plan?.planName !== undefined ? ` · ${provider.plan.planName}` : ''}
         </span>
       </div>
       {provider.error !== undefined && <span className={styles.errorLine}>{t('usage.provider.error', { error: provider.error })}</span>}

@@ -1,4 +1,4 @@
-# Restore the copy that was installed before the fork deploy.
+# Remove the fork deploy and restore the registry copy.
 #
 #   powershell -File scripts/uninstall.ps1
 #   powershell -File scripts/uninstall.ps1 -Profile web
@@ -10,22 +10,32 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$target = Join-Path $DshHome "profiles\$Profile\node_modules\@linxin666\dsh-usage"
-$stock = "$target.stock"
+$profileDir = Join-Path $DshHome "profiles\$Profile"
+$deploy = Join-Path $profileDir 'plugins\dsh-usage'
+$link = Join-Path $profileDir 'node_modules\@linxin666\dsh-usage'
+$stock = "$link.stock"
 
-$existing = Get-Item $target -Force -ErrorAction SilentlyContinue
-if ($existing) {
-  if ($existing.LinkType -eq 'Junction' -or $existing.LinkType -eq 'SymbolicLink') {
-    Remove-Item -LiteralPath $target -Force
-  } else {
-    Remove-Item -LiteralPath $target -Recurse -Force
-  }
-  Write-Host "removed $target"
+if (Test-Path $link) {
+  $existing = Get-Item $link -Force
+  if ($existing.LinkType) { [System.IO.Directory]::Delete($link) }
+  else { Remove-Item -LiteralPath $link -Recurse -Force }
+  Write-Host "removed $link"
+}
+
+if (Test-Path $deploy) {
+  Remove-Item -LiteralPath $deploy -Recurse -Force
+  Write-Host "removed $deploy"
 }
 
 if (Test-Path $stock) {
   Rename-Item -LiteralPath $stock -NewName 'dsh-usage'
   Write-Host "restored previous copy"
-} else {
-  Write-Host "no previous copy parked; run pnpm install in the profile to restore it"
+}
+
+$pkgPath = Join-Path $profileDir 'package.json'
+$pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
+if ($pkg.dependencies.PSObject.Properties.Name -contains '@linxin666/dsh-usage') {
+  $pkg.dependencies.PSObject.Properties.Remove('@linxin666/dsh-usage')
+  ($pkg | ConvertTo-Json -Depth 8) | Set-Content $pkgPath -Encoding utf8
+  Write-Host "dropped the link dependency; run pnpm install to restore the registry copy"
 }
