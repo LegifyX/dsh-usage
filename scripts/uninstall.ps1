@@ -1,7 +1,7 @@
-# Restore the copy that was installed before the link.
+# Restore the copy that was installed before the fork deploy.
 #
-#   pwsh -File scripts/uninstall.ps1
-#   pwsh -File scripts/uninstall.ps1 -Profile web
+#   powershell -File scripts/uninstall.ps1
+#   powershell -File scripts/uninstall.ps1 -Profile web
 
 param(
   [string]$Profile = 'desktop',
@@ -14,9 +14,13 @@ $target = Join-Path $DshHome "profiles\$Profile\node_modules\@linxin666\dsh-usag
 $stock = "$target.stock"
 
 $existing = Get-Item $target -Force -ErrorAction SilentlyContinue
-if ($existing -and $existing.LinkType -eq 'Junction') {
-  Remove-Item -LiteralPath $target -Force
-  Write-Host "unlinked $target"
+if ($existing) {
+  if ($existing.LinkType -eq 'Junction' -or $existing.LinkType -eq 'SymbolicLink') {
+    Remove-Item -LiteralPath $target -Force
+  } else {
+    Remove-Item -LiteralPath $target -Recurse -Force
+  }
+  Write-Host "removed $target"
 }
 
 if (Test-Path $stock) {
