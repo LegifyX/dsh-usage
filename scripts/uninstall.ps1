@@ -1,4 +1,4 @@
-# Restore the registry copy of @linxin666/dsh-usage.
+# Restore the copy that was installed before the link.
 #
 #   pwsh -File scripts/uninstall.ps1
 #   pwsh -File scripts/uninstall.ps1 -Profile web
@@ -21,7 +21,7 @@ if ($existing -and $existing.LinkType -eq 'Junction') {
 
 if (Test-Path $stock) {
   Rename-Item -LiteralPath $stock -NewName 'dsh-usage'
-  Write-Host "restored stock copy"
+  Write-Host "restored previous copy"
 } else {
-  Write-Host "no stock copy parked; run pnpm install in the profile to restore it"
+  Write-Host "no previous copy parked; run pnpm install in the profile to restore it"
 }

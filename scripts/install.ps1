@@ -29,7 +29,7 @@ if ($existing -and $existing.LinkType -eq 'Junction') {
 if ($existing) {
   if (Test-Path $stock) { Remove-Item -Recurse -Force $stock }
   Rename-Item -LiteralPath $target -NewName (Split-Path -Leaf $stock)
-  Write-Host "stock copy parked at $stock"
+  Write-Host "previous copy parked at $stock"
 }
 
 New-Item -ItemType Junction -Path $target -Target $source | Out-Null

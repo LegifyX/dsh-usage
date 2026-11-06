@@ -37,11 +37,11 @@ powershell -File scripts/install.ps1            # desktop profile
 powershell -File scripts/install.ps1 -Profile web
 ```
 
-The script renames the pnpm-installed directory to `dsh-usage.stock` and
-replaces it with a junction to this checkout. Restart DSH for the host half and
-refresh the page for the client half.
+The script renames the directory that was installed before the link to
+`dsh-usage.stock` and replaces it with a junction to this checkout. Restart DSH
+for the host half and refresh the page for the client half.
 
-`scripts/uninstall.ps1` renames the stock copy back.
+`scripts/uninstall.ps1` renames that previous copy back.
 
 ## Upgrading upstream
 
