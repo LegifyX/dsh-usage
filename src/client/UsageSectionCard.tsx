@@ -21,7 +21,7 @@ import type { UsageSettingsCardFace } from './usage-settings-card.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
 import { voucherData, drawVoucher, faceValue, formatDay, formatDenomination, loadVoucherArt } from './voucher.ts'
-import type { BalanceView, ObservedSpendView, ProviderSnapshotView, QuotaMeterView, QuotaView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
+import type { BalanceView, ObservedSpendView, ProviderSnapshotView, QuotaMeterView, QuotaView, SpendLimitView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
 import { formatSpend, type SpendDisplay } from '../core/spend.ts'
 
 export type { UsageSettings } from './usage-settings-card.ts'
@@ -455,6 +455,8 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
 
             <QuotaCard providers={snapshot.providers} current={current.provider} />
 
+            <SpendLimitsCard providers={snapshot.providers} current={current.provider} />
+
             <RangeCard range={snapshot.usage.range} providers={snapshot.providers} currentProvider={current.provider} />
           </>
         )}
@@ -701,6 +703,66 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
               )}
             </div>
           ))}
+    </div>
+  )
+}
+
+/** Money text for a spend cap: a symbol for USD/CNY, else the ISO code. */
+function spendMoney(value: number, currency: string): string {
+  const code = currency.toUpperCase()
+  const amount = value.toFixed(2)
+  if (code === 'USD') return '$' + amount
+  if (code === 'CNY') return '¥' + amount
+  return amount + ' ' + code
+}
+
+/** The window word for a spend cap; an unknown provider window shows as-is. */
+function spendWindowLabel(window: string): string {
+  return window === 'daily' || window === 'monthly' || window === 'key'
+    ? t('usage.spend.' + window)
+    : window
+}
+
+/**
+ * Money spent against a provider's own cap (AMD Cloud's daily USD ceiling, a
+ * relay key's limit). Distinct from the token quota card: the window and the
+ * unit are the provider's, and a 0 limit renders as "unlimited" rather than a
+ * full bar. A provider with no cap still shows its spend.
+ */
+function SpendLimitsCard(props: { providers: ProviderSnapshotView[]; current?: string }): ReactNode {
+  const rows = props.providers.filter((provider) => provider.spend !== undefined)
+  if (rows.length === 0) return null
+  return (
+    <div className={styles.card} data-dsh-part="spend-limits-card">
+      <span className={styles.cardTitle}>{t('usage.spend.title')}</span>
+      {rows.map((provider) => {
+        const spend = provider.spend
+        if (spend === undefined) return null
+        const limited = spend.limit > 0
+        const percent = limited ? Math.min(100, Math.max(0, (spend.used / spend.limit) * 100)) : undefined
+        return (
+          <div key={provider.provider} className={styles.windowRow} data-dsh-part="spend-row">
+            <span className={styles.windowLabel}>
+              <span>
+                {provider.displayName} · {spendWindowLabel(spend.window)}
+                {props.current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
+              </span>
+              <span>
+                {spendMoney(spend.used, spend.currency)} / {limited ? spendMoney(spend.limit, spend.currency) : t('usage.spend.unlimited')}
+                {percent !== undefined ? ' · ' + percentLabel(percent) : ''}
+              </span>
+            </span>
+            {limited && (
+              <span className={styles.bar}>
+                <span className={styles.barFill} style={{ width: `${percent ?? 0}%`, display: 'block' }} />
+              </span>
+            )}
+            {spend.resetsAt !== undefined && (
+              <span className={styles.resetLine}>{t('usage.plan.reset', { date: new Date(spend.resetsAt).toLocaleString() })}</span>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

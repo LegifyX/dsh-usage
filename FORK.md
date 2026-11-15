@@ -85,6 +85,15 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    meter rows under the balance line, so the plan's weekly headroom is visible
    without opening the panel.
 
+5. **Provider spend caps.** Not every provider meters tokens: AMD Cloud
+   enforces a daily USD cost ceiling, numes exposes an OpenRouter-style key with
+   a USD limit (0 = uncapped), and refuseless publishes a USD wallet. The fork
+   adds a `spend` probe half for money-over-a-window facts and a "Provider
+   limits" card on the Usage tab, plus a balance adapter for refuseless. A cap
+   of 0 renders as "unlimited" rather than a full bar. NVIDIA, the local
+   llama.cpp server and the LAN Open WebUI instance expose no usage endpoint,
+   so they stay unprobed.
+
 ## Install
 
 ```powershell

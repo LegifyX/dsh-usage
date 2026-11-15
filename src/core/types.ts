@@ -152,6 +152,24 @@ export interface QuotaView {
   updatedAt: number
 }
 
+/**
+ * A provider's spend cap over one billing window, when it meters money rather
+ * than tokens (AMD Cloud's daily cost ceiling, a relay key's USD limit).
+ * `limit` 0 means the provider reported no cap.
+ */
+export interface SpendLimitView {
+  /** ISO 4217 code the provider meters in. */
+  currency: string
+  /** Amount spent in this window. */
+  used: number
+  /** Cap for this window; 0 means unlimited/uncapped. */
+  limit: number
+  /** Window key the UI localizes (`daily`, `monthly`, `key`, provider strings otherwise). */
+  window: string
+  /** ISO 8601 reset instant, when the provider reports one. */
+  resetsAt?: string
+}
+
 /** How the credential backing one provider route was resolved. */
 export type CredentialKind = 'api-key' | 'env' | 'oauth' | 'none'
 
@@ -186,6 +204,8 @@ export interface ProviderSnapshotView {
   planSupported?: boolean
   /** A subscription-quota adapter (input/output meters) exists for this route. */
   quotaSupported?: boolean
+  /** A spend-cap adapter (money over a window) exists for this route. */
+  spendSupported?: boolean
   balance?: BalanceView
   /**
    * Every currency the route's account reports, CNY and USD first.
@@ -198,6 +218,8 @@ export interface ProviderSnapshotView {
   plan?: PlanView
   /** Input/output subscription meters (deeprelay plans). */
   quota?: QuotaView
+  /** Money spent against a provider's own cap (AMD Cloud daily cost, relay keys). */
+  spend?: SpendLimitView
   /** Last probe failure, cleared on the next success. */
   error?: string
   updatedAt?: number
@@ -278,4 +300,6 @@ export interface ProviderSnapshotState extends ProviderSnapshotView {
   planError?: string
   /** Last quota-probe failure; cleared on the next quota success. */
   quotaError?: string
+  /** Last spend-probe failure; cleared on the next spend success. */
+  spendError?: string
 }

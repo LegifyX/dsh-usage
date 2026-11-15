@@ -15,12 +15,12 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
 import { withIdentityEncoding } from './http.ts'
-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, providerErrorMessage, quotaAppliesToRoute } from '../core/adapters.ts'
-import type { BalanceParse, PlanParse, QuotaParse } from '../core/adapters.ts'
+import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, providerErrorMessage, quotaAppliesToRoute, spendAppliesToRoute } from '../core/adapters.ts'
+import type { BalanceParse, PlanParse, QuotaParse, SpendParse } from '../core/adapters.ts'
 import { foldAliasRoutes } from '../core/provider-routes.ts'
 import { deepseekModelSpend } from '../core/pricing.ts'
 import { createLedgerDocument, deserializeLedger, foldUsage, ledgerDayKeys, localDateKey, pruneLedger, summarizeDays, totalTokens } from '../core/ledger.ts'
-import type { BalanceView, CredentialKind, ObservedSpendView, PlanView, ProviderSnapshotState, ProviderSnapshotView, QuotaView, UsageDayView, UsageLedgerDocument, UsageOverviewView, UsageTokenTotals } from '../core/types.ts'
+import type { BalanceView, CredentialKind, ObservedSpendView, PlanView, ProviderSnapshotState, ProviderSnapshotView, QuotaView, SpendLimitView, UsageDayView, UsageLedgerDocument, UsageOverviewView, UsageTokenTotals } from '../core/types.ts'
 import { addTotals, emptyTotals } from '../core/types.ts'
 import { resolveSpendDisplay, type SpendDisplay } from '../core/spend.ts'
 
@@ -313,13 +313,13 @@ export class UsageService {
     for (const route of routes) {
       const adapter = adapterFor(route.id)
       const snapshot = this.snapshots.get(route.id)
-      const error = snapshot?.balanceError ?? snapshot?.planError ?? snapshot?.quotaError
+      const error = snapshot?.balanceError ?? snapshot?.planError ?? snapshot?.quotaError ?? snapshot?.spendError
       providers.push({
         provider: route.id,
         displayName: route.displayName || adapter?.displayName || route.id,
         credential: snapshot?.credential ?? 'none',
         supported: route.id === 'deepseek-account'
-          || (adapter !== undefined && (adapter.balance !== undefined || adapter.plan !== undefined || adapter.quota !== undefined)),
+          || (adapter !== undefined && (adapter.balance !== undefined || adapter.plan !== undefined || adapter.quota !== undefined || adapter.spend !== undefined)),
         // The signed-in account route has no adapter of its own (familyOnly),
         // but probeAccountBalance() fills its balance, so the row is a real
         // balance row rather than an unsupported one.
@@ -336,10 +336,12 @@ export class UsageService {
           : {}),
         ...(adapter?.plan !== undefined ? { planSupported: true } : {}),
         ...(adapter?.quota !== undefined && quotaAppliesToRoute(adapter, this.routeBaseUrl(route.id)) ? { quotaSupported: true } : {}),
+        ...(adapter?.spend !== undefined && spendAppliesToRoute(adapter, this.routeBaseUrl(route.id)) ? { spendSupported: true } : {}),
         ...(snapshot?.balance !== undefined ? { balance: snapshot.balance } : {}),
         ...(snapshot?.balances !== undefined ? { balances: snapshot.balances } : {}),
         ...(snapshot?.plan !== undefined ? { plan: snapshot.plan } : {}),
         ...(snapshot?.quota !== undefined ? { quota: snapshot.quota } : {}),
+        ...(snapshot?.spend !== undefined ? { spend: snapshot.spend } : {}),
         ...(error !== undefined ? { error } : {}),
         ...(snapshot?.updatedAt !== undefined ? { updatedAt: snapshot.updatedAt } : {}),
       })
@@ -678,7 +680,7 @@ export class UsageService {
           if (this.disposed) return
           seen.add(route.id)
           const adapter = adapterFor(route.id)
-          if (adapter === undefined || (adapter.balance === undefined && adapter.plan === undefined && adapter.quota === undefined)) continue
+          if (adapter === undefined || (adapter.balance === undefined && adapter.plan === undefined && adapter.quota === undefined && adapter.spend === undefined)) continue
           await this.probeRoute(route, adapter)
         }
         for (const id of [...this.snapshots.keys()]) {
@@ -798,6 +800,7 @@ export class UsageService {
     // balance as unsupported instead.
     const balanceApplies = balanceAppliesToRoute(adapter, this.routeBaseUrl(route.id))
     const quotaApplies = quotaAppliesToRoute(adapter, this.routeBaseUrl(route.id))
+    const spendApplies = spendAppliesToRoute(adapter, this.routeBaseUrl(route.id))
     if (credential.key === undefined) {
       // Nothing to probe with (oauth grant, no credential): retained facts
       // would never refresh again, so the row resets to its credential
@@ -819,11 +822,12 @@ export class UsageService {
       ...(adapter.balance !== undefined && !balanceApplies ? { balanceSupported: false } : {}),
       updatedAt: Date.now(),
     }
-    const runProbe = async (kind: 'balance' | 'plan' | 'quota'): Promise<BalanceView | PlanView | QuotaView | undefined> => {
+    const runProbe = async (kind: 'balance' | 'plan' | 'quota' | 'spend'): Promise<BalanceView | PlanView | QuotaView | SpendLimitView | undefined> => {
       const half = adapter[kind]
       if (half === undefined) return undefined
       if (kind === 'balance' && !balanceApplies) return undefined
       if (kind === 'quota' && !quotaApplies) return undefined
+      if (kind === 'spend' && !spendApplies) return undefined
       try {
         const spec = half.build({ apiKey: credential.key as string, ...(credential.accountId !== undefined ? { accountId: credential.accountId } : {}) })
         const response = await fetch(spec.url, withIdentityEncoding({
@@ -843,6 +847,10 @@ export class UsageService {
           const fact = parsed as QuotaParse
           return { planName: fact.planName, price: fact.price, meters: fact.meters, updatedAt }
         }
+        if (kind === 'spend') {
+          const fact = parsed as SpendParse
+          return { currency: fact.currency, used: fact.used, limit: fact.limit, window: fact.window, ...(fact.resetsAt !== undefined ? { resetsAt: fact.resetsAt } : {}), updatedAt }
+        }
         const plan = parsed as PlanParse
         return { planName: plan.planName, windows: plan.windows, updatedAt }
       } catch (error) {
@@ -852,6 +860,7 @@ export class UsageService {
         const message = error instanceof Error ? error.message.slice(0, 200) : String(error)
         if (kind === 'balance') snapshot.balanceError = message
         else if (kind === 'quota') snapshot.quotaError = message
+        else if (kind === 'spend') snapshot.spendError = message
         else snapshot.planError = message
         return undefined
       }
@@ -866,6 +875,9 @@ export class UsageService {
     const quota = await runProbe('quota')
     if (quota !== undefined) snapshot.quota = quota as QuotaView
     else if (previous?.quota !== undefined) snapshot.quota = previous.quota
+    const spend = await runProbe('spend')
+    if (spend !== undefined) snapshot.spend = spend as SpendLimitView
+    else if (previous?.spend !== undefined) snapshot.spend = previous.spend
     this.snapshots.set(route.id, snapshot)
   }
 

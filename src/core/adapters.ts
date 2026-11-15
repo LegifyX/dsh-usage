@@ -8,7 +8,7 @@
  * @module @linxin666/dsh-usage/core/adapters
  */
 
-import type { PlanWindowView, QuotaMeterView } from './types.ts'
+import type { PlanWindowView, QuotaMeterView, SpendLimitView } from './types.ts'
 
 /** One HTTP probe the service executes verbatim. */
 export interface ProbeSpec {
@@ -50,6 +50,9 @@ export interface QuotaParse {
   price?: string
   meters: QuotaMeterView[]
 }
+
+/** A parsed spend-cap fact (money spent against a provider's own ceiling). */
+export interface SpendParse extends SpendLimitView {}
 
 /** One provider family's probing capability. */
 export interface ProviderAdapter {
@@ -101,6 +104,17 @@ export interface ProviderAdapter {
     origin?: string
     build(context: AdapterProbeContext): ProbeSpec
     parse(status: number, body: unknown): QuotaParse | undefined
+  }
+  /**
+   * Money spent against a cap the provider itself enforces (a daily cost
+   * ceiling, a relay key's USD limit). Separate from balance (what is left to
+   * spend) and from quota (token meters): a spend cap can exist with no
+   * wallet, and the window is the provider's own.
+   */
+  spend?: {
+    origin?: string
+    build(context: AdapterProbeContext): ProbeSpec
+    parse(status: number, body: unknown): SpendParse | undefined
   }
 }
 
@@ -262,6 +276,86 @@ const DEEPRELAY: ProviderAdapter = {
       ].filter((entry): entry is QuotaMeterView => entry !== undefined)
       if (meters.length === 0) return undefined
       return { planName, price, meters }
+    },
+  },
+}
+
+/**
+ * AMD Cloud (Radeon) meters a daily USD cost ceiling per organization and
+ * reports it on `/v1/usage`: the cap, what today has spent, and the reset
+ * instant in the organization's own time zone. Its `/v1/key` endpoint reports
+ * a different, dev-plan view and is not this account's daily ceiling.
+ */
+const AMD_CLOUD: ProviderAdapter = {
+  ids: ['amdradeoncloud'],
+  displayName: 'AMD Cloud',
+  spend: {
+    origin: 'https://developer.amd.com.cn',
+    build: ({ apiKey }) => ({ url: 'https://developer.amd.com.cn/radeon/api/v1/usage', headers: bearer(apiKey) }),
+    parse: (status, body) => {
+      if (status !== 200 || typeof body !== 'object' || body === null) return undefined
+      const root = body as Record<string, unknown>
+      const used = toNum(root.daily_cost_used_usd)
+      const limit = toNum(root.daily_cost_limit_usd)
+      if (used === undefined || limit === undefined) return undefined
+      return {
+        currency: 'USD',
+        used,
+        limit: Math.max(0, limit),
+        window: 'daily',
+        ...(toIso(root.daily_reset_at) !== undefined ? { resetsAt: toIso(root.daily_reset_at) } : {}),
+      }
+    },
+  },
+}
+
+/**
+ * numes exposes an OpenRouter-style key object at `/api/v1/key`: `limit` is the
+ * key's USD cap (0 = uncapped), and `usage_daily`/`usage_weekly`/`usage_monthly`
+ * break the spend down. The account named `dsh` currently reports 0 usage and
+ * no cap, so the card renders it as unlimited rather than inventing a bar.
+ */
+const NUMES: ProviderAdapter = {
+  ids: ['numes'],
+  displayName: 'numes',
+  spend: {
+    origin: 'https://api.numes.ai',
+    build: ({ apiKey }) => ({ url: 'https://api.numes.ai/api/v1/key', headers: bearer(apiKey) }),
+    parse: (status, body) => {
+      if (status !== 200 || typeof body !== 'object' || body === null) return undefined
+      const data = (body as Record<string, unknown>).data
+      if (typeof data !== 'object' || data === null) return undefined
+      const row = data as Record<string, unknown>
+      const limit = toNum(row.limit)
+      const used = toNum(row.usage)
+      if (limit === undefined && used === undefined) return undefined
+      return {
+        currency: str(row.billing_currency)?.toUpperCase() ?? 'USD',
+        used: used ?? 0,
+        limit: Math.max(0, limit ?? 0),
+        window: 'key',
+        ...(toIso(row.limit_reset) !== undefined ? { resetsAt: toIso(row.limit_reset) } : {}),
+      }
+    },
+  },
+}
+
+/**
+ * refuseless publishes an OpenRouter-compatible `/v1/credits` object: the
+ * wallet balance, not a cap. It belongs on the balance card; `available` is
+ * what can still be spent.
+ */
+const REFUSELESS: ProviderAdapter = {
+  ids: ['refuseless'],
+  displayName: 'refuseless',
+  balance: {
+    origin: 'https://api.refuseless.com',
+    build: ({ apiKey }) => ({ url: 'https://api.refuseless.com/v1/credits', headers: bearer(apiKey) }),
+    parse: (status, body) => {
+      if (status !== 200 || typeof body !== 'object' || body === null) return undefined
+      const available = toNum((body as Record<string, unknown>).available)
+      if (available === undefined) return undefined
+      return { currency: 'USD', totalBalance: money(available) }
     },
   },
 }
@@ -584,6 +678,9 @@ export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
   OPENAI_CODEX,
   OPENROUTER,
   DEEPRELAY,
+  AMD_CLOUD,
+  NUMES,
+  REFUSELESS,
   siliconFlow('api.siliconflow.cn', ['siliconflow', 'siliconflow-cn'], 'CNY'),
   siliconFlow('api.siliconflow.com', ['siliconflow-intl'], 'USD'),
   ZENMUX,
@@ -624,6 +721,22 @@ export function originOf(baseURL: string | undefined): string | undefined {
  */
 export function balanceAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean {
   const expected = adapter.balance?.origin
+  if (expected === undefined) return true
+  const configured = originOf(baseURL)
+  if (configured === undefined) return true
+  return configured === expected
+}
+
+/**
+ * Whether a spend-cap endpoint reports THIS route's account. Same origin gate
+ * as the balance and quota halves.
+ *
+ * @param adapter - the matched adapter.
+ * @param baseURL - the route's configured base URL (pi-ai profile), if any.
+ * @returns true when the adapter may probe its spend endpoint for the route.
+ */
+export function spendAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean {
+  const expected = adapter.spend?.origin
   if (expected === undefined) return true
   const configured = originOf(baseURL)
   if (configured === undefined) return true
