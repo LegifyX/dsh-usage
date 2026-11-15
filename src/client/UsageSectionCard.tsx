@@ -34,6 +34,8 @@ export interface UsageSectionFace {
   poll: () => void
   /** Force a host probe cycle now (resolves with the fresh overview). */
   refresh: () => void
+  /** Clear the discovery cache and re-probe adapter-less providers. */
+  rescan: () => void
   /**
    * Fetch one retained local day (YYYY-MM-DD) from the host. The overview
    * only carries today plus the list of recorded days, so a day the user picks
@@ -242,7 +244,7 @@ function DayPicker(props: {
 
 /** The section component; the slot merges the face into these props. */
 export function UsageSectionCard(props: UsageSectionProps): ReactNode {
-  const { store, poll, refresh, loadDay, settingsCard } = props
+  const { store, poll, refresh, rescan, loadDay, settingsCard } = props
   const ui = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // The card store republishes the Host's accepted value, so the poll below
   // starts and stops with the switch without waiting for an unrelated render.
@@ -254,6 +256,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const [usageDay, setUsageDay] = useState<string | undefined>(undefined)
   const [bankDay, setBankDay] = useState<string | undefined>(undefined)
   const [refreshing, setRefreshing] = useState(false)
+  const [rescanning, setRescanning] = useState(false)
   const enabled = card.enabled.text !== 'false'
 
   // Poll while mounted, enabled and visible; the overview is cheap (no probes —
@@ -312,6 +315,15 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
       ? undefined
       : { from: bankDayView.date, to: bankDayView.date, totals: bankDayView.totals, providers: bankDayView.providers }
 
+  const onRescan = (): void => {
+    setRescanning(true)
+    try {
+      rescan()
+    } finally {
+      window.setTimeout(() => setRescanning(false), 4000)
+    }
+  }
+
   const onRefresh = (): void => {
     setRefreshing(true)
     try {
@@ -365,8 +377,11 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           </span>
           <span className={styles.headerActions}>
             <span className={styles.muted}>{t('usage.updated', { time: formatTime(snapshot.updatedAt) })}</span>
-            <button type="button" className={styles.refreshBtn} onClick={onRefresh} disabled={refreshing}>
+            <button type="button" className={styles.refreshBtn} onClick={onRefresh} disabled={refreshing || rescanning}>
               {refreshing ? t('usage.refreshing') : t('usage.refresh')}
+            </button>
+            <button type="button" className={styles.refreshBtn} onClick={onRescan} disabled={rescanning || refreshing}>
+              {rescanning ? t('usage.rescanning') : t('usage.rescan')}
             </button>
           </span>
         </div>

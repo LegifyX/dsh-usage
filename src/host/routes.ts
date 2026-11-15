@@ -69,6 +69,37 @@ export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute
  * @param service - the usage service.
  * @returns the route.
  */
+/**
+ * Manual rescan: clears the discovery cache and re-probes adapter-less
+ * providers, then answers with the fresh overview. Same trust fence.
+ * @param ctx - host context; may expose remoteWebUiPairing.
+ * @param service - the usage service.
+ * @returns the route.
+ */
+export function makeUsageRescanRoute(ctx: Context, service: UsageService): WebRoute {
+  return {
+    kind: 'exact',
+    path: USAGE_API_PREFIX + '/rescan',
+    handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      if (!isUsageAllowed(ctx, req)) {
+        writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
+        return
+      }
+      if (req.method !== 'POST') {
+        writeJson(res, 405, { ok: false, error: 'method not allowed' })
+        return
+      }
+      try {
+        await service.rescan()
+      } catch (error) {
+        writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : 'rescan failed' })
+        return
+      }
+      writeJson(res, 200, service.overview(), { 'cache-control': 'no-store' })
+    },
+  }
+}
+
 export function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebRoute {
   return {
     kind: 'exact',

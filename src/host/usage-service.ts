@@ -15,8 +15,10 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
 import { withIdentityEncoding } from './http.ts'
-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, providerErrorMessage, quotaAppliesToRoute, spendAppliesToRoute } from '../core/adapters.ts'
-import type { BalanceParse, PlanParse, QuotaParse, SpendParse } from '../core/adapters.ts'
+import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, quotaAppliesToRoute, spendAppliesToRoute } from '../core/adapters.ts'
+import type { BalanceParse, PlanParse, ProviderAdapter, QuotaParse, SpendParse } from '../core/adapters.ts'
+import { discoverUsage, shapeUrl, USAGE_SHAPES, isLoopbackBaseURL } from '../core/discovery.ts'
+import type { UsageShape } from '../core/discovery.ts'
 import { foldAliasRoutes } from '../core/provider-routes.ts'
 import { deepseekModelSpend } from '../core/pricing.ts'
 import { createLedgerDocument, deserializeLedger, foldUsage, ledgerDayKeys, localDateKey, pruneLedger, summarizeDays, totalTokens } from '../core/ledger.ts'
@@ -235,15 +237,39 @@ function readNamespace(ctx: Context, ns: string): unknown {
   return undefined
 }
 
+/** One cached discovery result for a route that has no hand-written adapter. */
+interface ProbeRecord {
+  /** Origin the discovery ran against; a base-URL change invalidates the record. */
+  origin: string
+  /** Winning shape id, absent when no shape matched. */
+  shape?: string
+  /** Fact kind the shape produced (`balance` or `spend`). */
+  kind?: 'balance' | 'spend'
+  /** Endpoint the shape lives at, for diagnostics. */
+  endpoint?: string
+  ok: boolean
+  checkedAt: number
+}
+
+/** A failed discovery is retried only after this long. */
+const PROBE_RETRY_MS = 7 * 24 * 3_600_000
+
+/**
+ * @param ctx - host context.
+ * @param options - resolved poll/retention settings.
+ */
 export class UsageService {
   private readonly ctx: Context
   private options: UsageServiceOptions
   private readonly persistDir: string
   private readonly ledgerPath: string
   private readonly snapshotsPath: string
+  private readonly probesPath: string
 
   private ledger: UsageLedgerDocument = createLedgerDocument()
   private readonly snapshots = new Map<string, ProviderSnapshotState>()
+  /** Discovery cache for routes with no hand-written adapter. */
+  private probes: Record<string, ProbeRecord> = {}
   /** The official DeepSeek family's real-spend watch (see SpendWatch). */
   private spendWatch: SpendWatch | undefined
   /** Per-live-session route attribution (WeakMap: disposed sessions age out). */
@@ -271,6 +297,7 @@ export class UsageService {
     this.persistDir = join(dshHome(), 'dsh-usage')
     this.ledgerPath = join(this.persistDir, 'usage-ledger.json')
     this.snapshotsPath = join(this.persistDir, 'provider-snapshots.json')
+    this.probesPath = join(this.persistDir, 'provider-probes.json')
   }
 
   /** Start the listeners, load persisted state, and arm the first poll. */
@@ -311,7 +338,7 @@ export class UsageService {
     const routes = this.listProviderRoutes()
     const providers: ProviderSnapshotView[] = []
     for (const route of routes) {
-      const adapter = adapterFor(route.id)
+      const adapter = this.adapterForRoute(route.id)
       const snapshot = this.snapshots.get(route.id)
       const error = snapshot?.balanceError ?? snapshot?.planError ?? snapshot?.quotaError ?? snapshot?.spendError
       providers.push({
@@ -396,7 +423,7 @@ export class UsageService {
     if (provider === undefined) return { ...this.current }
     let snapshot = this.snapshots.get(provider)
     if (snapshot === undefined) {
-      const family = adapterFor(provider)
+      const family = this.adapterForRoute(provider)
       if (family !== undefined) {
         for (const [id, candidate] of this.snapshots) {
           if (adapterFor(id) === family) {
@@ -440,10 +467,10 @@ export class UsageService {
    * together.
    */
   private familyUsageToday(provider: string): UsageTokenTotals {
-    const family = adapterFor(provider)
+    const family = this.adapterForRoute(provider)
     let merged = emptyTotals()
     for (const row of this.daySummary(localDateKey(Date.now())).providers) {
-      const same = family === undefined ? row.provider === provider : adapterFor(row.provider) === family
+      const same = family === undefined ? row.provider === provider : this.adapterForRoute(row.provider) === family
       if (same) merged = addTotals(merged, row.totals)
     }
     return merged
@@ -483,7 +510,7 @@ export class UsageService {
    */
   private routeDisplayName(provider: string): string {
     const route = this.listProviderRoutes().find((entry) => entry.id === provider)
-    return route?.displayName || adapterFor(provider)?.displayName || provider
+    return route?.displayName || this.adapterForRoute(provider)?.displayName || provider
   }
 
   // ------------------------------------------------------------------
@@ -540,9 +567,10 @@ export class UsageService {
 
   private async loadPersisted(): Promise<void> {
     try {
-      const [rawLedger, rawSnapshots] = await Promise.all([
+      const [rawLedger, rawSnapshots, rawProbes] = await Promise.all([
         readFile(this.ledgerPath, 'utf8').catch(() => undefined),
         readFile(this.snapshotsPath, 'utf8').catch(() => undefined),
+        readFile(this.probesPath, 'utf8').catch(() => undefined),
       ])
       if (rawLedger !== undefined) {
         const loaded = deserializeLedger(JSON.parse(rawLedger))
@@ -558,6 +586,16 @@ export class UsageService {
         }
         pruneLedger(this.ledger, localDateKey(Date.now()), this.options.retainDays)
         this.lastPrune = { dayKey: localDateKey(Date.now()), retainDays: this.options.retainDays }
+      }
+      if (rawProbes !== undefined) {
+        const parsed = JSON.parse(rawProbes) as { probes?: Record<string, ProbeRecord> }
+        if (typeof parsed === 'object' && parsed !== null && typeof parsed.probes === 'object' && parsed.probes !== null) {
+          for (const [provider, record] of Object.entries(parsed.probes)) {
+            if (typeof record !== 'object' || record === null || typeof record.origin !== 'string') continue
+            if (typeof record.ok !== 'boolean' || typeof record.checkedAt !== 'number') continue
+            this.probes[provider] = record
+          }
+        }
       }
       if (rawSnapshots !== undefined) {
         const parsed = JSON.parse(rawSnapshots) as { providers?: Record<string, ProviderSnapshotState>; spendWatch?: SpendWatch }
@@ -661,6 +699,92 @@ export class UsageService {
   }
 
   /**
+   * The adapter serving one route: the hand-written registry first, then a
+   * discovered endpoint from the probe cache. Discovery results are only used
+   * after a successful parse, so an arbitrary provider never gets a guessed
+   * fact.
+   */
+  private adapterForRoute(provider: string): ProviderAdapter | undefined {
+    const fixed = adapterFor(provider)
+    if (fixed !== undefined) return fixed
+    const record = this.probes[provider]
+    if (record === undefined || record.ok !== true || record.shape === undefined || record.kind === undefined) return undefined
+    const shape = USAGE_SHAPES.find((entry) => entry.id === record.shape)
+    if (shape === undefined) return undefined
+    const baseURL = this.routeBaseUrl(provider)
+    if (baseURL === undefined) return undefined
+    const half = {
+      origin: originOf(baseURL),
+      build: ({ apiKey }: { apiKey: string }) => ({ url: shapeUrl(baseURL, shape), headers: { authorization: `Bearer ${apiKey}` } }),
+      parse: (status: number, body: unknown) => status === 200 ? shape.parse(body) : undefined,
+    }
+    return record.kind === 'balance'
+      ? { ids: [provider], displayName: provider, balance: half as ProviderAdapter['balance'] }
+      : { ids: [provider], displayName: provider, spend: half as ProviderAdapter['spend'] }
+  }
+
+  /**
+   * Adapter for a route, discovering one on first sight. A provider whose
+   * discovery failed is retried only after a week; the manual rescan clears
+   * the cache. Routes without a credential or a usable base URL are skipped.
+   */
+  private async ensureAdapter(route: ProviderRoute): Promise<ProviderAdapter | undefined> {
+    const fixed = adapterFor(route.id)
+    if (fixed !== undefined) return fixed
+    const baseURL = this.routeBaseUrl(route.id)
+    if (baseURL === undefined || baseURL.trim() === '' || isLoopbackBaseURL(baseURL)) return undefined
+    const origin = originOf(baseURL)
+    if (origin === undefined) return undefined
+    const existing = this.probes[route.id]
+    if (existing !== undefined && existing.origin === origin) {
+      if (existing.ok) return this.adapterForRoute(route.id)
+      if (Date.now() - existing.checkedAt < PROBE_RETRY_MS) return undefined
+    }
+    const credential = await this.resolveCredential(route.id)
+    if (credential.key === undefined) return undefined
+    const found = await discoverUsage(baseURL, credential.key)
+    if (found === undefined) {
+      this.probes[route.id] = { origin, ok: false, checkedAt: Date.now() }
+      await this.persistProbes()
+      return undefined
+    }
+    this.probes[route.id] = {
+      origin,
+      shape: found.shape.id,
+      kind: 'limit' in found.fact ? 'spend' : 'balance',
+      endpoint: shapeUrl(baseURL, found.shape),
+      ok: true,
+      checkedAt: Date.now(),
+    }
+    await this.persistProbes()
+    return this.adapterForRoute(route.id)
+  }
+
+  /** Rewrite the probe cache after a discovery or a rescan. */
+  private async persistProbes(): Promise<void> {
+    if (!this.loaded) return
+    try {
+      await mkdir(dirname(this.probesPath), { recursive: true })
+      await writeJsonAtomic(this.probesPath, { version: 1, probes: this.probes })
+    } catch {
+      // Persistence failures leave the in-memory cache usable.
+    }
+  }
+
+  /**
+   * Clear every discovery result and re-scan on the next poll. Snapshots of
+   * discovered routes are dropped too, so a shape that no longer matches does
+   * not keep presenting stale facts.
+   */
+  async rescan(): Promise<void> {
+    const discovered = new Set(Object.keys(this.probes))
+    this.probes = {}
+    for (const id of discovered) this.snapshots.delete(id)
+    await this.persistProbes()
+    await this.pollNow()
+  }
+
+  /**
    * One poll cycle: enumerate routes, resolve credentials, probe.
    * A call while a cycle is already running joins that cycle instead of
    * returning immediately, so a manual refresh always waits for real probes.
@@ -679,12 +803,15 @@ export class UsageService {
           // out of a cycle that outlived the service.
           if (this.disposed) return
           seen.add(route.id)
-          const adapter = adapterFor(route.id)
+          const adapter = await this.ensureAdapter(route)
           if (adapter === undefined || (adapter.balance === undefined && adapter.plan === undefined && adapter.quota === undefined && adapter.spend === undefined)) continue
           await this.probeRoute(route, adapter)
         }
         for (const id of [...this.snapshots.keys()]) {
           if (!seen.has(id)) this.snapshots.delete(id)
+        }
+        for (const id of Object.keys(this.probes)) {
+          if (!seen.has(id)) delete this.probes[id]
         }
         if (this.disposed) return
         await this.probeAccountBalance(routes)

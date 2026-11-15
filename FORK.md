@@ -94,6 +94,15 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    llama.cpp server and the LAN Open WebUI instance expose no usage endpoint,
    so they stay unprobed.
 
+6. **Usage-endpoint discovery.** A provider with no hand-written adapter is
+   probed once against its own base URL for known shapes (`/usage` for AMD's
+   daily cap, `/key` for OpenRouter-style limits, `/credits` for a wallet).
+   Only JSON with expected fields is accepted and redirects are refused, so an
+   HTML app answering every path is rejected. The winning shape is cached in
+   `$DSH_HOME/dsh-usage/provider-probes.json`; normal polls reuse it. A failed
+   discovery is retried after a week, and the Usage header's **Re-scan limits**
+   button clears the cache and re-probes now.
+
 ## Install
 
 ```powershell

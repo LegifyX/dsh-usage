@@ -32,6 +32,8 @@ interface UsageHttpApi {
   /** One retained local day (YYYY-MM-DD), the day pickers' detail fetch. */
   day(date: string): Promise<UsageDayView>
   refresh(): Promise<UsageOverviewView>
+  /** Re-run discovery for adapter-less providers and answer the fresh overview. */
+  rescan(): Promise<UsageOverviewView>
 }
 
 /** Hard ceiling for one usage API call; a stalled host must not pile up requests. */
@@ -53,6 +55,7 @@ const usageApi: UsageHttpApi = {
   overview: () => usageFetch('api/dsh-usage/overview', 'GET'),
   day: async (date: string) => (await usageFetch<UsageDayResponse>('api/dsh-usage/day?date=' + encodeURIComponent(date), 'GET')).day,
   refresh: () => usageFetch('api/dsh-usage/refresh', 'POST'),
+  rescan: () => usageFetch('api/dsh-usage/rescan', 'POST'),
 }
 
 /**
@@ -166,13 +169,27 @@ export function apply(ctx: ClientContext): void {
   // small local request the 10 s poll has no reason to repeat.
   const loadDay = (date: string): Promise<UsageDayView> => usageApi.day(date)
 
+  // Discovery re-probes providers without a hand-written adapter; the response
+  // is authoritative like refresh's, so a slower poll cannot overwrite it.
+  const rescan = (): void => {
+    const seq = pollSeq + 1
+    pollSeq = seq
+    usageApi.rescan().then((snapshot) => {
+      pollSeq = seq
+      store.actions.setSnapshot(snapshot)
+    }, (error: unknown) => {
+      if (seq !== pollSeq) return
+      store.actions.setState('error', error instanceof Error ? error.message : String(error))
+    })
+  }
+
   // The card form lives as long as the plugin, like the store: the page reads
   // its last state on reopen, and a write in flight settles after the page closes.
   const settingsCard = new UsageSettingsCardController(settingsForm)
   ctx.effect(() => () => { settingsCard.dispose() }, 'dsh-usage: settings card')
   const settingsCardFace = settingsCard.inject()
 
-  const face = (): UsageSectionFace => ({ store, poll, refresh, loadDay, settingsCard: settingsCardFace })
+  const face = (): UsageSectionFace => ({ store, poll, refresh, rescan, loadDay, settingsCard: settingsCardFace })
 
   // Sidebar foot card: the compact usage glance seated below the shell's
   // Settings row. It shares the section's store and poll path (the sequence
