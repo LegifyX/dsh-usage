@@ -33,7 +33,7 @@ import { deepseekPeriodAt } from '../core/pricing.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { totalTokens } from '../core/ledger.ts'
 import { formatSpend } from '../core/spend.ts'
-import type { BalanceView, ProviderSnapshotView, UsageOverviewView } from '../core/types.ts'
+import type { BalanceView, ProviderSnapshotView, QuotaMeterView, UsageOverviewView } from '../core/types.ts'
 import type { UsageStoreInstance } from './usage-store.ts'
 
 /** Props the mount forwards into the React tree. */
@@ -180,6 +180,34 @@ function cardClass(collapsed: boolean): string {
   return collapsed ? styles.footCard + ' ' + styles.footCardCollapsed : styles.footCard
 }
 
+/** The rolling-7-day meter of the first provider that reports one (a flat plan). */
+function weekPlan(snapshot: UsageOverviewView): { name: string; meter: QuotaMeterView } | undefined {
+  for (const provider of snapshot.providers) {
+    const meter = provider.quota?.meters.find((entry) => entry.key === 'week')
+    if (meter !== undefined) return { name: provider.displayName, meter }
+  }
+  return undefined
+}
+
+/** One compact plan meter: label, track and used/limit with the percentage. */
+function FootMeterRow(props: { kind: 'in' | 'out'; used: number; limit: number }): ReactNode {
+  const { kind, used, limit } = props
+  const percent = limit > 0 ? Math.max(0, Math.min(100, (used / limit) * 100)) : undefined
+  const label = percent === undefined ? '' : percent >= 10 ? `${Math.round(percent)}%` : `${percent.toFixed(1)}%`
+  return (
+    <span className={styles.footMeter} data-dsh-meter={kind}>
+      <span className={styles.footMeterKey}>{t(`usage.quota.${kind}`)}</span>
+      <span className={styles.footMeterTrack}>
+        <span
+          className={kind === 'in' ? styles.quotaIn : styles.quotaOut}
+          style={{ width: `${percent ?? 0}%`, display: 'block' }}
+        />
+      </span>
+      <span className={styles.footMeterValue}>{formatTokens(used)}/{formatTokens(limit)} · {label}</span>
+    </span>
+  )
+}
+
 /**
  * Render the foot card content for the current store snapshot.
  * @param props - store, poller, settings form and open callback from the mount.
@@ -271,6 +299,7 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
 
   const head = headline(snapshot)
   const balances = balanceLine(snapshot)
+  const plan = weekPlan(snapshot)
   // The published peak/off-peak clock is always in force, so the card carries
   // it on every route and on empty days instead of only when the day's spend
   // happened to run through the official family.
@@ -302,15 +331,22 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
         </span>
         <span className={styles.footLine} data-dsh-part="foot-card-usage">{usageLine(snapshot, head.tokenFallback)}</span>
         {balances !== undefined && <span className={styles.footLine} data-dsh-part="foot-card-balances">{balances}</span>}
-        {period !== undefined && (
-          <span className={styles.footPeak}>
-            <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />
-            <span className={styles.footPeakClock}>
-              {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
-            </span>
+        {plan !== undefined && (
+          <span className={styles.footPlan} data-dsh-part="foot-card-plan">
+            <span className={styles.footPlanName}>{plan.name} · 7d</span>
+            <FootMeterRow kind="in" used={plan.meter.usedInput} limit={plan.meter.limitInput} />
+            <FootMeterRow kind="out" used={plan.meter.usedOutput} limit={plan.meter.limitOutput} />
           </span>
         )}
-        <span className={styles.footMeta}>{t('usage.updated', { time: formatClock(snapshot.updatedAt) })}</span>
+        <span className={styles.footFoot} data-dsh-part="foot-card-foot">
+          <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />
+          <span className={styles.footPeakClock}>
+            {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
+          </span>
+          <span className={styles.footMeta} title={t('usage.updated', { time: formatClock(snapshot.updatedAt) })}>
+            {formatClock(snapshot.updatedAt)}
+          </span>
+        </span>
       </button>
       {toggle}
     </div>

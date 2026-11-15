@@ -21,7 +21,7 @@ import type { UsageSettingsCardFace } from './usage-settings-card.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
 import { voucherData, drawVoucher, faceValue, formatDay, formatDenomination, loadVoucherArt } from './voucher.ts'
-import type { BalanceView, ObservedSpendView, ProviderSnapshotView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
+import type { BalanceView, ObservedSpendView, ProviderSnapshotView, QuotaMeterView, QuotaView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
 import { formatSpend, type SpendDisplay } from '../core/spend.ts'
 
 export type { UsageSettings } from './usage-settings-card.ts'
@@ -73,7 +73,7 @@ function trim(value: number): string {
 
 function formatTime(ms: number): string {
   try {
-    return new Date(ms).toLocaleTimeString()
+    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
   } catch {
     return ''
   }
@@ -437,7 +437,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                 // Include rows whose balance is deliberately not applicable
                 // (another origin's endpoint): the row itself explains why, which
                 // a single generic line cannot (#1688).
-                const rows = configured.filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.supported))
+                const rows = configured.filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.balance !== undefined))
                 if (rows.length === 0) {
                   return <span className={styles.muted}>{configured.length === 0 ? t('usage.balance.noneConfigured') : t('usage.balance.unsupported')}</span>
                 }
@@ -452,6 +452,8 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
               )}
             </div>
             </div>
+
+            <QuotaCard providers={snapshot.providers} current={current.provider} />
 
             <RangeCard range={snapshot.usage.range} providers={snapshot.providers} currentProvider={current.provider} />
           </>
@@ -700,5 +702,94 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
             </div>
           ))}
     </div>
+  )
+}
+
+/** Used-percent for one quota dimension; undefined when the cap is absent/zero (uncapped). */
+function meterPercent(used: number, limit: number): number | undefined {
+  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) return undefined
+  return Math.max(0, Math.min(100, (used / limit) * 100))
+}
+
+/** Percent label matching the plan-card precision (whole digits above 10%). */
+function percentLabel(percent: number): string {
+  return percent >= 10 ? `${Math.round(percent)}%` : `${percent.toFixed(1)}%`
+}
+
+/**
+ * One dimension of a subscription meter: a full-width track so a small fraction
+ * still reads as a fraction of the whole, with the used/limit pair beside it.
+ */
+function QuotaMeterLine(props: { kind: 'in' | 'out'; used: number; limit: number }): ReactNode {
+  const { kind, used, limit } = props
+  const percent = meterPercent(used, limit)
+  return (
+    <div className={styles.quotaMeter} data-dsh-meter={kind}>
+      <span className={styles.quotaLimit}>
+        <span className={kind === 'in' ? styles.quotaDotIn : styles.quotaDotOut} />
+        <span>{t(`usage.quota.${kind}`)} {formatTokens(used)} / {limit > 0 ? formatTokens(limit) : '∞'}</span>
+        {percent !== undefined && <span className={styles.quotaPercent}>{percentLabel(percent)}</span>}
+      </span>
+      <span className={styles.bar}>
+        <span
+          className={kind === 'in' ? styles.quotaIn : styles.quotaOut}
+          style={{ width: `${percent ?? 0}%`, display: 'block' }}
+        />
+      </span>
+    </div>
+  )
+}
+
+/** One subscription window (the month, or the rolling 7 days) as two meter lines. */
+function QuotaWindow(props: { meter: QuotaMeterView }): ReactNode {
+  const { meter } = props
+  const localized = meter.key === 'month' || meter.key === 'week' ? t(`usage.quota.${meter.key}`) : undefined
+  return (
+    <div className={styles.windowRow} data-dsh-part="quota-window">
+      <span className={styles.windowLabel}>
+        <span>{localized ?? meter.name ?? meter.key}</span>
+        <span>
+          {meter.resetsAt !== undefined
+            ? t('usage.plan.reset', { date: new Date(meter.resetsAt).toLocaleDateString() })
+            : t('usage.quota.rolling')}
+        </span>
+      </span>
+      <QuotaMeterLine kind="in" used={meter.usedInput} limit={meter.limitInput} />
+      <QuotaMeterLine kind="out" used={meter.usedOutput} limit={meter.limitOutput} />
+    </div>
+  )
+}
+
+/**
+ * The subscription-limit card: one card per provider whose adapter reads
+ * input/output meters (deeprelay). The numbers are the server's own weighted
+ * counters, so they already account for each model's usage factor and need no
+ * local reconstruction. Routes without meters render nothing at all.
+ */
+function QuotaCard(props: { providers: ProviderSnapshotView[]; current?: string }): ReactNode {
+  const rows = props.providers.filter((provider) => provider.quota !== undefined && provider.quota.meters.length > 0)
+  if (rows.length === 0) return null
+  return (
+    <>
+      {rows.map((provider) => {
+        const quota = provider.quota
+        if (quota === undefined) return null
+        return (
+          <div key={provider.provider} className={`${styles.card} ${styles.planCard}`} data-dsh-part="quota-card">
+            <div className={styles.planHead}>
+              <span className={styles.planName}>
+                {provider.displayName}
+                {quota.planName !== undefined ? ` · ${quota.planName}` : ''}
+                {props.current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
+              </span>
+              {quota.price !== undefined && <span className={styles.muted}>{quota.price}</span>}
+            </div>
+            {provider.error !== undefined && <span className={styles.errorLine}>{t('usage.provider.error', { error: provider.error })}</span>}
+            {quota.meters.map((meter) => <QuotaWindow key={meter.key} meter={meter} />)}
+            <span className={styles.resetLine}>{t('usage.quota.hint')}</span>
+          </div>
+        )
+      })}
+    </>
   )
 }

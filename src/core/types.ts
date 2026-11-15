@@ -119,6 +119,39 @@ export interface PlanView {
   updatedAt: number
 }
 
+/**
+ * One window of a provider subscription that meters INPUT and OUTPUT
+ * separately (deeprelay's Base/Plus plans). PlanView's percent-per-window
+ * shape cannot carry this: the two caps share a window but not a
+ * denominator, so each dimension keeps its own used/limit pair.
+ */
+export interface QuotaMeterView {
+  /** Stable window key the UI localizes (`month`, `week`, provider strings otherwise). */
+  key: string
+  /** Provider-supplied window name, when it sends one. */
+  name?: string
+  /** Weighted input tokens spent this window. */
+  usedInput: number
+  /** Weighted input cap for this window; 0 means uncapped. */
+  limitInput: number
+  /** Weighted output tokens spent this window. */
+  usedOutput: number
+  /** Weighted output cap for this window; 0 means uncapped. */
+  limitOutput: number
+  /** ISO 8601 reset instant; absent for a rolling window. */
+  resetsAt?: string
+}
+
+/** A subscription-metering quota fact normalized from a provider probe. */
+export interface QuotaView {
+  /** Plan tier name, when the provider reports one. */
+  planName?: string
+  /** Plan price formatted for display, when the provider reports one. */
+  price?: string
+  meters: QuotaMeterView[]
+  updatedAt: number
+}
+
 /** How the credential backing one provider route was resolved. */
 export type CredentialKind = 'api-key' | 'env' | 'oauth' | 'none'
 
@@ -151,6 +184,8 @@ export interface ProviderSnapshotView {
   balanceSupported?: boolean
   /** A coding-plan adapter exists for this route — the Plans tab lists these only. */
   planSupported?: boolean
+  /** A subscription-quota adapter (input/output meters) exists for this route. */
+  quotaSupported?: boolean
   balance?: BalanceView
   /**
    * Every currency the route's account reports, CNY and USD first.
@@ -161,6 +196,8 @@ export interface ProviderSnapshotView {
    */
   balances?: BalanceView[]
   plan?: PlanView
+  /** Input/output subscription meters (deeprelay plans). */
+  quota?: QuotaView
   /** Last probe failure, cleared on the next success. */
   error?: string
   updatedAt?: number
@@ -239,4 +276,6 @@ export interface ProviderSnapshotState extends ProviderSnapshotView {
   balanceError?: string
   /** Last plan-probe failure; cleared on the next plan success. */
   planError?: string
+  /** Last quota-probe failure; cleared on the next quota success. */
+  quotaError?: string
 }

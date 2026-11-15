@@ -2,6 +2,14 @@
 
 English | [中文](README.zh.md)
 
+> **This is the LegifyX fork of `@linxin666/dsh-usage`.** It adds signed-in
+> DeepSeek account balances in every currency, deeprelay flat-plan subscription
+> meters (monthly and rolling 7-day input/output), those 7-day meters in the
+> sidebar card, an always-on peak marker, and LAN trust for the host routes.
+> See [FORK.md](FORK.md) for the full change list, install instructions, and how
+> to sync with upstream. Upstream: `zhu1090093659/dsh-web`, package
+> `packages/dsh-usage` (Apache-2.0).
+
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-usage?style=flat-square" alt="Version">
   &nbsp;

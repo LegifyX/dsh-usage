@@ -24,7 +24,7 @@ export interface PeakBadgeProps {
 /** HH:MM of one instant; an unparsable instant drops the time. */
 export function formatClock(ms: number): string {
   try {
-    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   } catch {
     return ''
   }

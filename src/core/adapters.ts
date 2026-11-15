@@ -8,7 +8,7 @@
  * @module @linxin666/dsh-usage/core/adapters
  */
 
-import type { PlanWindowView } from './types.ts'
+import type { PlanWindowView, QuotaMeterView } from './types.ts'
 
 /** One HTTP probe the service executes verbatim. */
 export interface ProbeSpec {
@@ -42,6 +42,13 @@ export interface BalanceParse {
 export interface PlanParse {
   planName?: string
   windows: PlanWindowView[]
+}
+
+/** A parsed subscription-quota fact (input/output meters over one window). */
+export interface QuotaParse {
+  planName?: string
+  price?: string
+  meters: QuotaMeterView[]
 }
 
 /** One provider family's probing capability. */
@@ -83,6 +90,17 @@ export interface ProviderAdapter {
   plan?: {
     build(context: AdapterProbeContext): ProbeSpec
     parse(status: number, body: unknown): PlanParse | undefined
+  }
+  /**
+   * Input/output subscription meters (deeprelay). Separate from `plan` because
+   * the two dimensions carry their own used/limit counters rather than one
+   * percentage. `origin` gates the probe the same way the balance half does,
+   * so a reseller route that merely shares the id is never read.
+   */
+  quota?: {
+    origin?: string
+    build(context: AdapterProbeContext): ProbeSpec
+    parse(status: number, body: unknown): QuotaParse | undefined
   }
 }
 
@@ -170,6 +188,80 @@ const DEEPSEEK: ProviderAdapter = {
       const total = str((first as Record<string, unknown>).total_balance)
       if (currency === undefined || total === undefined) return undefined
       return { currency, totalBalance: total }
+    },
+  },
+}
+
+/**
+ * deeprelay flat-plan subscription: four weighted-token meters (monthly input,
+ * monthly output, rolling 7-day input, rolling 7-day output) plus a dollar
+ * usage backstop. `/v1/billing/subscription` is the server's own gate, so the
+ * card shows exactly what the provider enforces rather than a reconstructed
+ * local count; the local ledger cannot reproduce the per-model usage factors
+ * (a glm-5.3 token spends 12 of the allowance).
+ *
+ * The response is only meaningful when it is an entitled subscription whose
+ * meter was readable: `subscribed` is the entitlement flag (NOT `status`,
+ * which follows Stripe's vocabulary) and a null `usage` means "unknown", not
+ * "nothing used".
+ */
+export const DEEPRELAY_API_ORIGIN = 'https://api.deeprelay.ai'
+
+/** Format the plan price the provider reports (`amount_cents` + currency). */
+function planPrice(price: Record<string, unknown> | undefined): string | undefined {
+  if (typeof price !== 'object' || price === null) return undefined
+  const cents = toNum((price as Record<string, unknown>).amount_cents)
+  if (cents === undefined) return undefined
+  const currency = str((price as Record<string, unknown>).currency)?.toUpperCase() ?? 'USD'
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'CNY' ? '¥' : `${currency} `
+  const amount = (cents / 100).toFixed(2).replace(/\.00$/, '')
+  const interval = str((price as Record<string, unknown>).interval)
+  const suffix = interval === 'month' ? '/mo' : interval === 'year' ? '/yr' : ''
+  return `${symbol}${amount}${suffix}`
+}
+
+const DEEPRELAY: ProviderAdapter = {
+  ids: ['deeprelay'],
+  displayName: 'deeprelay',
+  quota: {
+    origin: DEEPRELAY_API_ORIGIN,
+    build: ({ apiKey }) => ({ url: 'https://api.deeprelay.ai/v1/billing/subscription', headers: bearer(apiKey) }),
+    parse: (status, body) => {
+      if (status !== 200 || typeof body !== 'object' || body === null) return undefined
+      const root = body as Record<string, unknown>
+      if (root.subscribed !== true) return undefined
+      const quota = root.quota
+      const usage = root.usage
+      if (typeof quota !== 'object' || quota === null) return undefined
+      if (typeof usage !== 'object' || usage === null) return undefined
+      const limits = quota as Record<string, unknown>
+      const used = usage as Record<string, unknown>
+      const plan = root.plan
+      const planName = typeof plan === 'object' && plan !== null ? str((plan as Record<string, unknown>).name) : undefined
+      const price = typeof plan === 'object' && plan !== null
+        ? planPrice((plan as Record<string, unknown>).price as Record<string, unknown> | undefined)
+        : undefined
+      const resetAt = toIso(used.period_end) ?? toIso(root.current_period_end)
+      const meter = (key: string, name: string, limitIn: unknown, limitOut: unknown, usedIn: unknown, usedOut: unknown, resetsAt: string | undefined): QuotaMeterView | undefined => {
+        const limitInput = Math.max(0, toNum(limitIn) ?? 0)
+        const limitOutput = Math.max(0, toNum(limitOut) ?? 0)
+        if (limitInput <= 0 && limitOutput <= 0) return undefined
+        return {
+          key,
+          name,
+          usedInput: Math.max(0, toNum(usedIn) ?? 0),
+          limitInput,
+          usedOutput: Math.max(0, toNum(usedOut) ?? 0),
+          limitOutput,
+          ...(resetsAt !== undefined ? { resetsAt } : {}),
+        }
+      }
+      const meters = [
+        meter('month', 'Month', limits.input_tokens_monthly, limits.output_tokens_monthly, used.weighted_input_tokens, used.weighted_output_tokens, resetAt),
+        meter('week', '7 days', limits.weekly_input_tokens, limits.weekly_output_tokens, used.weekly_weighted_input_tokens, used.weekly_weighted_output_tokens, undefined),
+      ].filter((entry): entry is QuotaMeterView => entry !== undefined)
+      if (meters.length === 0) return undefined
+      return { planName, price, meters }
     },
   },
 }
@@ -491,6 +583,7 @@ export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
   minimaxPlan('api.minimax.io', ['minimax']),
   OPENAI_CODEX,
   OPENROUTER,
+  DEEPRELAY,
   siliconFlow('api.siliconflow.cn', ['siliconflow', 'siliconflow-cn'], 'CNY'),
   siliconFlow('api.siliconflow.com', ['siliconflow-intl'], 'USD'),
   ZENMUX,
@@ -531,6 +624,23 @@ export function originOf(baseURL: string | undefined): string | undefined {
  */
 export function balanceAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean {
   const expected = adapter.balance?.origin
+  if (expected === undefined) return true
+  const configured = originOf(baseURL)
+  if (configured === undefined) return true
+  return configured === expected
+}
+
+/**
+ * Whether a subscription-quota endpoint reports THIS route's account. Same
+ * origin gate as {@link balanceAppliesToRoute}, for the quota half: a route key
+ * that merely shares `deeprelay` but points at another host is another account.
+ *
+ * @param adapter - the matched adapter.
+ * @param baseURL - the route's configured base URL (pi-ai profile), if any.
+ * @returns true when the adapter may probe its quota endpoint for the route.
+ */
+export function quotaAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean {
+  const expected = adapter.quota?.origin
   if (expected === undefined) return true
   const configured = originOf(baseURL)
   if (configured === undefined) return true

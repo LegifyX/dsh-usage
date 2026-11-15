@@ -11,7 +11,7 @@
  * here.
  */
 import type { IncomingMessage } from 'node:http'
-import { isLoopbackRequest } from './loopback.ts'
+import { isLoopbackRequest, isTrustedLanRequest } from './loopback.ts'
 
 /** Structural pairing lookup (no package dependency on remote-web-ui). */
 interface PairingAccess {
@@ -37,6 +37,9 @@ interface LookupCtx {
  */
 export function isPairedOrLoopbackAllowed(ctx: LookupCtx, request: IncomingMessage): boolean {
   if (isLoopbackRequest(request)) return true
+  // Local fork: a request addressed to this machine's LAN IP is still this
+  // host's own request (see isTrustedLanRequest).
+  if (isTrustedLanRequest(request)) return true
   return lookupPairing(ctx)?.isPairedDevice(request) === true
 }
 

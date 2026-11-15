@@ -117,3 +117,41 @@ export function isForwardedLoopbackRequest(request: IncomingMessage): boolean {
     return false
   }
 }
+
+/**
+ * Local-fork addition (not in upstream): trust a request whose Host header is
+ * this machine's own non-internal IPv4 address, with the same browser
+ * same-origin markers the loopback fence uses. This is what makes the usage
+ * page work over a LAN address (dsh-web-lan-access) without pairing: the
+ * request still landed on this host, and a cross-site browser request is
+ * refused. A forwarded request never qualifies, so a proxy/tunnel in front of
+ * the host cannot use this path.
+ * @param request - node HTTP request.
+ * @returns true when the Host names one of this machine's LAN addresses and the origin matches.
+ */
+export function isTrustedLanRequest(request: IncomingMessage): boolean {
+  if (isProxiedRequest(request)) return false
+  const host = request.headers.host
+  if (typeof host !== 'string') return false
+  let hostUrl: URL
+  try {
+    hostUrl = new URL('http://' + host)
+  } catch {
+    return false
+  }
+  const os = globalThis.process?.getBuiltinModule?.('os') as typeof import('node:os') | undefined
+  if (!os) return false
+  const addresses = Object.values(os.networkInterfaces())
+    .flat()
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined && entry.family === 'IPv4' && !entry.internal)
+    .map((entry) => entry.address)
+  if (!addresses.includes(hostUrl.hostname)) return false
+  if (request.headers['sec-fetch-site'] === 'cross-site') return false
+  const origin = request.headers.origin
+  if (origin === undefined) return true
+  try {
+    return new URL(origin).host === hostUrl.host
+  } catch {
+    return false
+  }
+}

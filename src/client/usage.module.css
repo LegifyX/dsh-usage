@@ -461,9 +461,9 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
-  padding: 8px;
+  padding: 7px 8px;
   border: none;
   border-radius: 12px;
   background: transparent;
@@ -665,4 +665,111 @@
 .footPeakClock {
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
+}
+
+/* Subscription meters (deeprelay): one full-width track per dimension, so a
+   small fraction still reads against the whole. Blue = input, orange =
+   output; the two colours stay fixed so the pair is recognizable at a glance
+   on both themes. */
+.quotaMeter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.quotaLimit {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  opacity: 0.85;
+}
+
+.quotaDotIn,
+.quotaDotOut {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex: none;
+  display: inline-block;
+}
+
+.quotaDotIn {
+  background: #4c8dff;
+}
+
+.quotaDotOut {
+  background: #f08a24;
+}
+
+.quotaPercent {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.quotaIn {
+  height: 100%;
+  border-radius: 999px;
+  background: #4c8dff;
+  transition: width 300ms ease;
+}
+
+.quotaOut {
+  height: 100%;
+  border-radius: 999px;
+  background: #f08a24;
+  transition: width 300ms ease;
+}
+
+/* Flat-plan meter block inside the sidebar glance card: a plan label and two
+   full-width tracks (blue input, orange output), each with its used/limit pair. */
+.footPlan {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.footPlanName {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.footMeter {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.footMeterKey {
+  opacity: 0.6;
+}
+
+.footMeterTrack {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  overflow: hidden;
+}
+
+.footMeterValue {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.footFoot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.footFoot .footMeta {
+  margin-left: auto;
+  opacity: 0.45;
 }

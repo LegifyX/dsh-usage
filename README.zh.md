@@ -2,6 +2,12 @@
 
 [English](README.md) | 中文
 
+> **这是 `@linxin666/dsh-usage` 的 LegifyX 分支。** 新增：已登录 DeepSeek
+> 账户的余额（含各币种钱包）、deeprelay 订阅套餐计量（每月与滚动 7 天的输入/输出
+> 额度）、侧边栏卡片中的 7 天计量条、常驻峰谷标记，以及 host 路由的局域网信任。
+> 完整改动、安装方式与同步上游的步骤见 [FORK.md](FORK.md)。上游：`zhu1090093659/dsh-web`
+> 的 `packages/dsh-usage`（Apache-2.0）。
+
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-usage?style=flat-square" alt="Version">
   &nbsp;
