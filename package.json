@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-usage",
   "description": "Usage statistics plugin for the dsh web GUI: per-provider balance and coding-plan quota detection plus a live token usage ledger, with a compact price glance card above the sidebar's Settings row (LegifyX fork: signed-in account balance in every currency, deeprelay subscription meters, always-on peak marker)",
-  "version": "0.4.15-legifyx.10",
+  "version": "0.4.15-legifyx.11",
   "forkOf": "@linxin666/dsh-usage@0.4.15",
   "repository": {
     "type": "git",

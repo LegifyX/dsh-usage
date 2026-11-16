@@ -305,28 +305,34 @@ export function CurrencySettings(props: { card: UsageSettingsCardState; face: Us
         <>
           <span className={styles.settingsSubhead}>{t('usage.config.providerCurrencies')}</span>
           <p className={styles.settingsGroupHint}>{t('usage.config.providerCurrenciesHint')}</p>
-          {providerRows.map(provider => (
-            <ChoiceField
-              key={provider.provider}
-              id={'settings-usage-currency-' + provider.provider}
-              label={provider.displayName}
-              presentation="segment"
-              choices={[
-                { value: 'native', label: t('usage.currency.native') },
-                { value: 'CNY', label: 'CNY' },
-                { value: 'USD', label: 'USD' },
-                { value: 'both', label: t('usage.currency.both') },
-              ]}
-              overriddenLabel={t('settings.overridden')}
-              resetLabel={t('settings.reset')}
-              disabled={!card.writable}
-              text={parseProviderCurrencies(card.providerCurrency.text).get(provider.provider) ?? 'native'}
-              overridden={parseProviderCurrencies(card.providerCurrency.text).has(provider.provider)}
-              invalid={false}
-              onEdit={(text) => { writeProviderCurrency(provider.provider, text as ProviderCurrency) }}
-              onReset={() => { writeProviderCurrency(provider.provider, undefined) }}
-            />
-          ))}
+          {providerRows.map(provider => {
+            const current = parseProviderCurrencies(card.providerCurrency.text).get(provider.provider) ?? 'native'
+            return (
+              <div key={provider.provider} className={styles.currencyRow}>
+                <span className={styles.currencyName}>{provider.displayName}</span>
+                <span className={styles.currencyChoices} role="group" aria-label={provider.displayName}>
+                  {([['native', t('usage.currency.native')], ['CNY', 'CNY'], ['USD', 'USD'], ['both', t('usage.currency.both')]] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={styles.currencyChoice}
+                      data-active={current === value ? '' : undefined}
+                      disabled={!card.writable}
+                      onClick={() => { writeProviderCurrency(provider.provider, value) }}
+                    >{label}</button>
+                  ))}
+                  {current !== 'native' && (
+                    <button
+                      type="button"
+                      className={styles.currencyReset}
+                      disabled={!card.writable}
+                      onClick={() => { writeProviderCurrency(provider.provider, undefined) }}
+                    >{t('settings.reset')}</button>
+                  )}
+                </span>
+              </div>
+            )
+          })}
         </>
       )}
     </div>

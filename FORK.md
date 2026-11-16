@@ -144,6 +144,8 @@ Four changes, all visible in the Usage card and the sidebar glance card:
     rows into a Currency card on the Usage tab, so they no longer repeat under
     Plans, Token Bank and Sidebar. Only poll interval stays page-wide. Choosing
     Native drops the per-provider override instead of storing a redundant entry.
+    Each provider's choices render as one inline row (label, then compressed
+    buttons) so the fourth option cannot wrap onto its own line.
 
 ## Install
 
