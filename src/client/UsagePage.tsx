@@ -253,46 +253,28 @@ export function CardVisibilitySettings(props: { card: UsageSettingsCardState; fa
   )
 }
 
-/** Split a comma-separated hidden-provider list into a set. */
-function splitHidden(text: string): Set<string> {
-  return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
-}
-
 /**
- * The display rows under the statistics. Each control writes through the card
- * form: the currency pick at once, a typed number after a pause or on Enter.
- * The rate only matters while spend shows in dollars, so it appears then.
+ * The spend-currency settings: the global total currency, its rate, and each
+ * provider's own choice. Rendered on the Usage tab only.
  */
-function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
-  const { card, face } = props
+export function CurrencySettings(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
+  const { card, face, providers } = props
   const fieldProps = {
     overriddenLabel: t('settings.overridden'),
     resetLabel: t('settings.reset'),
-    invalidLabel: t('settings.invalidNumber'),
     disabled: !card.writable
   }
-  const providerRows = props.providers.filter(provider => provider.credential !== 'none'
+  const providerRows = providers.filter(provider => provider.credential !== 'none'
     && (provider.balance !== undefined || provider.balances !== undefined || provider.plan !== undefined || provider.quota !== undefined))
   const writeProviderCurrency = (id: string, choice: ProviderCurrency | undefined): void => {
     const next = parseProviderCurrencies(card.providerCurrency.text)
-    if (choice === undefined) next.delete(id)
+    if (choice === undefined || choice === 'native') next.delete(id)
     else next.set(id, choice)
     face.edit('providerCurrency', [...next].map(([key, value]) => key + ':' + value).join(','))
   }
   return (
-    <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
-      <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
-      <ValueField
-        id="settings-usage-poll-interval"
-        label={t('usage.config.pollIntervalSec')}
-        hint={t('usage.config.pollIntervalHint')}
-        numeric
-        range={POLL_INTERVAL_RANGE}
-        {...fieldProps}
-        {...card.pollIntervalSec}
-        onEdit={(text) => { face.edit('pollIntervalSec', text) }}
-        onReset={() => { face.resetField('pollIntervalSec') }}
-      />
+    <div className={styles.card} data-dsh-part="currency-settings">
+      <span className={styles.cardTitle}>{t('usage.config.currencyTitle')}</span>
       <ChoiceField
         id="settings-usage-spend-currency"
         label={t('usage.config.spendCurrency')}
@@ -347,6 +329,42 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           ))}
         </>
       )}
+    </div>
+  )
+}
+
+/** Split a comma-separated hidden-provider list into a set. */
+function splitHidden(text: string): Set<string> {
+  return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
+}
+
+/**
+ * The display rows under the statistics. Each control writes through the card
+ * form: the currency pick at once, a typed number after a pause or on Enter.
+ * The rate only matters while spend shows in dollars, so it appears then.
+ */
+function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
+  const { card, face } = props
+  const fieldProps = {
+    overriddenLabel: t('settings.overridden'),
+    resetLabel: t('settings.reset'),
+    invalidLabel: t('settings.invalidNumber'),
+    disabled: !card.writable
+  }
+  return (
+    <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
+      <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
+      <ValueField
+        id="settings-usage-poll-interval"
+        label={t('usage.config.pollIntervalSec')}
+        hint={t('usage.config.pollIntervalHint')}
+        numeric
+        range={POLL_INTERVAL_RANGE}
+        {...fieldProps}
+        {...card.pollIntervalSec}
+        onEdit={(text) => { face.edit('pollIntervalSec', text) }}
+        onReset={() => { face.resetField('pollIntervalSec') }}
+      />
     </section>
   )
 }

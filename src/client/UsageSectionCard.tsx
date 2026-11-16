@@ -16,7 +16,7 @@ import styles from './usage.module.css'
 import cardCss from './settings-card.module.css'
 import { PeakBadge } from './PeakBadge.tsx'
 import { SegmentGroup } from './SegmentGroup.tsx'
-import { CardVisibilitySettings, SidebarCardSettings, UsagePage } from './UsagePage.tsx'
+import { CardVisibilitySettings, CurrencySettings, SidebarCardSettings, UsagePage } from './UsagePage.tsx'
 import { orderByList } from './order.ts'
 import { UsageFootPreview, type FootCardValues } from './UsageFootCard.tsx'
 import type { UsageSettingsCardFace } from './usage-settings-card.ts'
@@ -499,6 +499,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
             <SpendLimitsCard providers={snapshot.providers} current={current.provider} />
 
             <RangeCard range={snapshot.usage.range} providers={snapshot.providers} currentProvider={current.provider} />
+            <CurrencySettings card={card} face={settingsCard} providers={snapshot.providers} />
           </>
         )}
 

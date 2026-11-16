@@ -117,6 +117,7 @@ export const zh = {
   'usage.config.providerCurrenciesHint': '每个提供方的消费显示货币。',
   'usage.currency.native': '原生',
   'usage.currency.both': '双币',
+  'usage.config.currencyTitle': '货币',
   'settings.collapse': '收起',
   'settings.expand': '展开',
   'settings.notExposed': '这个版本的 DSH 没有开放使用统计的设置。',

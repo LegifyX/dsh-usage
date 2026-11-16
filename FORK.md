@@ -139,6 +139,12 @@ Four changes, all visible in the Usage card and the sidebar glance card:
     priced from a separate USD book stored as `costUsd` per ledger row, not
     divided from CNY; rows recorded before the book fall back to conversion.
 
+12. **Currency settings live on the Usage tab.** The global display currency,
+    its rate, and the per-provider choices moved out of the shared settings
+    rows into a Currency card on the Usage tab, so they no longer repeat under
+    Plans, Token Bank and Sidebar. Only poll interval stays page-wide. Choosing
+    Native drops the per-provider override instead of storing a redundant entry.
+
 ## Install
 
 ```powershell
