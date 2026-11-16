@@ -109,6 +109,16 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    the month), and a compact-spacing switch. Every field defaults to the
    original card, so an existing profile looks unchanged.
 
+8. **Per-provider cards and one plan concept.** A *Cards* group on the Usage
+   settings page lists every configured provider that reports a balance and
+   every provider that reports a plan, each with its own switch. Hiding is a
+   comma-separated provider list (`hiddenBalances`, `hiddenPlans`) that defaults
+   to empty, so a provider discovered later is visible without a schema change.
+   A plan now means either fact: the DeepSeek billing windows (`plan`) or a
+   deeprelay-style token quota (`quota`). The Plans tab renders both kinds, and
+   the deeprelay meter card moved there from the Usage tab. The sidebar's
+   balances line and plan block follow the same switches.
+
 ## Install
 
 ```powershell

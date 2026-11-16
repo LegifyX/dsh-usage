@@ -163,8 +163,8 @@ function usageLine(snapshot: UsageOverviewView, tokenFallback: boolean): string 
 }
 
 /** The balance line: up to BALANCE_CAP providers plus a +N overflow marker. */
-function balanceLine(snapshot: UsageOverviewView): string | undefined {
-  const rows = snapshot.providers.filter(balanceRow)
+function balanceLine(snapshot: UsageOverviewView, hidden: Set<string>): string | undefined {
+  const rows = snapshot.providers.filter(balanceRow).filter((provider) => !hidden.has(provider.provider))
   if (rows.length === 0) return undefined
   const shown = rows.slice(0, BALANCE_CAP).map((provider) => {
     // Every wallet currency rides on one row: an account can hold both CNY
@@ -181,8 +181,9 @@ function cardClass(collapsed: boolean): string {
 }
 
 /** The rolling-7-day meter of the first provider that reports one (a flat plan). */
-function planMeter(snapshot: UsageOverviewView, window: 'week' | 'month'): { name: string; meter: QuotaMeterView } | undefined {
+function planMeter(snapshot: UsageOverviewView, window: 'week' | 'month', hidden: Set<string>): { name: string; meter: QuotaMeterView } | undefined {
   for (const provider of snapshot.providers) {
+    if (hidden.has(provider.provider)) continue
     const meter = provider.quota?.meters.find((entry) => entry.key === window)
     if (meter !== undefined) return { name: provider.displayName, meter }
   }
@@ -230,6 +231,9 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   const showPeak = values?.footShowPeak !== false
   const showUpdated = values?.footShowUpdated !== false
   const compact = values?.footCompact === true
+  const parseHidden = (text: string | undefined): Set<string> => new Set((text ?? '').split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
+  const hiddenBalances = parseHidden(values?.hiddenBalances)
+  const hiddenPlans = parseHidden(values?.hiddenPlans)
 
   // The collapse choice is one localStorage flag, read at mount and persisted
   // on every flip (the old sidebar strip used the same contract shape).
@@ -307,8 +311,8 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   }
 
   const head = headline(snapshot)
-  const balances = balanceLine(snapshot)
-  const plan = planMeter(snapshot, meterWindow)
+  const balances = balanceLine(snapshot, hiddenBalances)
+  const plan = planMeter(snapshot, meterWindow, hiddenPlans)
   // The published peak/off-peak clock is always in force, so the card carries
   // it on every route and on empty days instead of only when the day's spend
   // happened to run through the official family.

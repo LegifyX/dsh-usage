@@ -339,7 +339,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   // no way back from the UI.
   if (!enabled || ui.status === 'error' || snapshot === null) {
     return (
-      <UsagePage card={card} face={settingsCard} enabled={enabled}>
+      <UsagePage card={card} face={settingsCard} enabled={enabled} providers={snapshot.providers}>
         {enabled
           ? (
             <span className={styles.muted} data-dsh-part="status-line">
@@ -363,7 +363,16 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   // adapter (planSupported; an older host without the flag falls back to "has
   // a plan fact"). Balance-only providers (DeepSeek, ZenMux, ...) and
   // unconfigured routes (credential 'none') never appear here.
-  const planProviders = snapshot.providers.filter((provider) => isConfigured(provider) && (provider.planSupported === true || (provider.planSupported === undefined && provider.plan !== undefined)))
+  // Hidden is a stored provider list; a provider missing from it is visible,
+  // so a newly discovered plan or wallet appears without a schema change.
+  const parseHidden = (text: string): Set<string> => new Set(text.split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
+  const hiddenBalances = parseHidden(card.hiddenBalances.text)
+  const hiddenPlans = parseHidden(card.hiddenPlans.text)
+  // A plan is any subscription fact: the DeepSeek billing windows (`plan`) and
+  // a deeprelay-style token quota (`quota`) are the same idea to a reader.
+  const planProviders = snapshot.providers.filter((provider) => isConfigured(provider)
+    && (provider.plan !== undefined || provider.quota !== undefined || provider.planSupported === true || provider.quotaSupported === true))
+    .filter((provider) => !hiddenPlans.has(provider.provider))
 
   return (
     <UsagePage card={card} face={settingsCard} enabled={enabled}>
@@ -452,9 +461,13 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                 // Include rows whose balance is deliberately not applicable
                 // (another origin's endpoint): the row itself explains why, which
                 // a single generic line cannot (#1688).
-                const rows = configured.filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.balance !== undefined))
+                const rows = configured
+                  .filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.balance !== undefined))
+                  .filter((provider) => !hiddenBalances.has(provider.provider))
                 if (rows.length === 0) {
-                  return <span className={styles.muted}>{configured.length === 0 ? t('usage.balance.noneConfigured') : t('usage.balance.unsupported')}</span>
+                  if (configured.length === 0) return <span className={styles.muted}>{t('usage.balance.noneConfigured')}</span>
+                  if (configured.some((provider) => hiddenBalances.has(provider.provider))) return <span className={styles.muted}>{t('usage.balance.hidden')}</span>
+                  return <span className={styles.muted}>{t('usage.balance.unsupported')}</span>
                 }
                 return rows.map((provider) => (
                   <ProviderRow key={provider.provider} provider={provider} current={current.provider} />
@@ -468,8 +481,6 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
             </div>
             </div>
 
-            <QuotaCard providers={snapshot.providers} current={current.provider} />
-
             <SpendLimitsCard providers={snapshot.providers} current={current.provider} />
 
             <RangeCard range={snapshot.usage.range} providers={snapshot.providers} currentProvider={current.provider} />
@@ -479,7 +490,9 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
         {tab === 'plans' && (
           planProviders.length === 0
             ? <div className={styles.card}><span className={styles.muted}>{t('usage.plan.noneConfigured')}</span></div>
-            : planProviders.map((provider) => <PlanCard key={provider.provider} provider={provider} current={current.provider} />)
+            : planProviders.map((provider) => provider.quota !== undefined
+              ? <QuotaCard key={provider.provider} providers={[provider]} current={current.provider} />
+              : <PlanCard key={provider.provider} provider={provider} current={current.provider} />)
         )}
 
         {tab === 'bank' && (

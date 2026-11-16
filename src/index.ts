@@ -62,6 +62,10 @@ export interface UsageConfigFields {
   footShowUpdated?: ConfigField<boolean>
   /** Tighter padding/gaps in the sidebar card. */
   footCompact?: ConfigField<boolean>
+  /** Comma-separated provider ids whose balance rows are hidden. */
+  hiddenBalances?: ConfigField<string>
+  /** Comma-separated provider ids whose plan cards are hidden. */
+  hiddenPlans?: ConfigField<string>
 }
 
 /**
@@ -98,6 +102,10 @@ export const Config = z.object({
   footShowPeak: z.boolean().default(true).volatile(),
   footShowUpdated: z.boolean().default(true).volatile(),
   footCompact: z.boolean().default(false).volatile(),
+  // Comma-separated provider ids the reader has hidden. Empty means "show
+  // everything", so a provider that appears later is visible automatically.
+  hiddenBalances: z.string().default('').volatile(),
+  hiddenPlans: z.string().default('').volatile(),
 })
 
 export interface ResolvedConfig extends UsageServiceOptions {

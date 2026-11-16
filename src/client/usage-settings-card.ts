@@ -7,7 +7,7 @@
 
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { CardForm, booleanField, choiceField, numberField, type CardActions, type CardShell, type FieldState } from './settings-form.ts'
+import { CardForm, booleanField, choiceField, numberField, textField, type CardActions, type CardShell, type FieldState } from './settings-form.ts'
 
 /** The settings fields this page edits (the namespace's own schema). */
 export interface UsageSettings {
@@ -27,6 +27,10 @@ export interface UsageSettings {
   footShowPeak?: boolean
   footShowUpdated?: boolean
   footCompact?: boolean
+  /** Comma-separated provider ids hidden from the balance card. */
+  hiddenBalances?: string
+  /** Comma-separated provider ids hidden from the plans tab. */
+  hiddenPlans?: string
 }
 
 /** The display currencies the spend figures offer. */
@@ -49,6 +53,8 @@ export interface UsageSettingsCardState extends CardShell {
   footShowPeak: FieldState
   footShowUpdated: FieldState
   footCompact: FieldState
+  hiddenBalances: FieldState
+  hiddenPlans: FieldState
 }
 
 /** The card's snapshot and its form actions, as the section receives them. */
@@ -76,6 +82,8 @@ export class UsageSettingsCardController {
       booleanField('footShowPeak'),
       booleanField('footShowUpdated'),
       booleanField('footCompact'),
+      textField('hiddenBalances', 'pick'),
+      textField('hiddenPlans', 'pick'),
     ])
     this.store = this.form.bind(() => ({
       ...this.form.shell(),
@@ -91,6 +99,8 @@ export class UsageSettingsCardController {
       footShowPeak: this.form.field('footShowPeak'),
       footShowUpdated: this.form.field('footShowUpdated'),
       footCompact: this.form.field('footCompact'),
+      hiddenBalances: this.form.field('hiddenBalances'),
+      hiddenPlans: this.form.field('hiddenPlans'),
     }))
   }
 

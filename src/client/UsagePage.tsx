@@ -9,6 +9,7 @@ import { t } from './locales.ts'
 import styles from './usage.module.css'
 import { ChoiceField, PluginSettingsCard, ToggleSwitch, ValueField } from './PluginSettingsCard.tsx'
 import { POLL_INTERVAL_RANGE, SPEND_CURRENCIES, type UsageSettingsCardFace, type UsageSettingsCardState } from './usage-settings-card.ts'
+import type { ProviderSnapshotView } from '../core/types.ts'
 
 /**
  * The page's card: the plugin switch in the header, the statistics and the
@@ -16,7 +17,7 @@ import { POLL_INTERVAL_RANGE, SPEND_CURRENCIES, type UsageSettingsCardFace, type
  * line says how to bring it back; a refused write keeps the body, so the
  * failure line under the rows stays readable.
  */
-export function UsagePage(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; enabled: boolean; children: ReactNode }): ReactNode {
+export function UsagePage(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; enabled: boolean; providers?: ProviderSnapshotView[]; children: ReactNode }): ReactNode {
   const { card, face, enabled } = props
   return (
     <ul className={styles.sectionList} data-dsh-plugin="usage">
@@ -44,7 +45,7 @@ export function UsagePage(props: { card: UsageSettingsCardState; face: UsageSett
         onDiscard={face.discard}
       >
         {props.children}
-        {card.exposed ? <SettingsRows card={card} face={face} /> : null}
+        {card.exposed ? <SettingsRows card={card} face={face} providers={props.providers ?? []} /> : null}
       </PluginSettingsCard>
     </ul>
   )
@@ -65,18 +66,42 @@ function ToggleRow(props: { label: string; checked: boolean; disabled?: boolean;
   )
 }
 
+/** Split a comma-separated hidden-provider list into a set. */
+function splitHidden(text: string): Set<string> {
+  return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
+}
+
 /**
  * The display rows under the statistics. Each control writes through the card
  * form: the currency pick at once, a typed number after a pause or on Enter.
  * The rate only matters while spend shows in dollars, so it appears then.
  */
-function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace }): ReactNode {
+function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
   const { card, face } = props
   const fieldProps = {
     overriddenLabel: t('settings.overridden'),
     resetLabel: t('settings.reset'),
     invalidLabel: t('settings.invalidNumber'),
-    disabled: !card.writable,
+    disabled: !card.writable
+  }
+  const hiddenBalances = splitHidden(card.hiddenBalances.text)
+  const hiddenPlans = splitHidden(card.hiddenPlans.text)
+  // Every configured provider that reports the fact gets a row, so a provider
+  // added later appears here without a schema change. Hidden is the stored
+  // list; a provider not in it is visible.
+  const balanceRows = props.providers.filter(provider => provider.credential !== 'none'
+    && (provider.balance !== undefined || provider.balances !== undefined || provider.balanceSupported === true))
+  const planRows = props.providers.filter(provider => provider.credential !== 'none'
+    && (provider.plan !== undefined || provider.quota !== undefined || provider.planSupported === true || provider.quotaSupported === true))
+  const toggleHidden = (field: 'hiddenBalances' | 'hiddenPlans', id: string, show: boolean): void => {
+    const next = splitHidden(card[field].text)
+    if (show) next.delete(id)
+    else next.add(id)
+    face.edit(field, [...next].sort().join(','))
+  }
+  const planLabel = (provider: ProviderSnapshotView): string => {
+    const name = provider.quota?.planName ?? provider.plan?.planName
+    return name !== undefined ? `${provider.displayName} · ${name}` : provider.displayName
   }
   return (
     <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
@@ -175,6 +200,33 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           disabled={!card.writable}
           onChange={(next) => face.edit('footCompact', String(next))}
         />
+      </section>
+      <section className={styles.settingsGroup} aria-labelledby="settings-usage-cards-title" data-dsh-part="card-settings">
+        <h3 className={styles.groupTitle} id="settings-usage-cards-title">{t('usage.config.cardsTitle')}</h3>
+        <p className={styles.settingsGroupHint}>{t('usage.config.cardsHint')}</p>
+        {balanceRows.length === 0 && planRows.length === 0 && (
+          <span className={styles.muted}>{t('usage.config.cardsNone')}</span>
+        )}
+        {balanceRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.balancesTitle')}</span>}
+        {balanceRows.map(provider => (
+          <ToggleRow
+            key={'balance-' + provider.provider}
+            label={provider.displayName}
+            checked={!hiddenBalances.has(provider.provider)}
+            disabled={!card.writable}
+            onChange={(next) => { toggleHidden('hiddenBalances', provider.provider, next) }}
+          />
+        ))}
+        {planRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.plansTitle')}</span>}
+        {planRows.map(provider => (
+          <ToggleRow
+            key={'plan-' + provider.provider}
+            label={planLabel(provider)}
+            checked={!hiddenPlans.has(provider.provider)}
+            disabled={!card.writable}
+            onChange={(next) => { toggleHidden('hiddenPlans', provider.provider, next) }}
+          />
+        ))}
       </section>
     </section>
   )
