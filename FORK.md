@@ -132,6 +132,13 @@ Four changes, all visible in the Usage card and the sidebar glance card:
     the widget preview and its switches. Only the general rows (poll interval,
     currency) stay visible under every tab.
 
+11. **Per-provider spend currency and a USD price book.** Each provider with a
+    wallet or plan gets a Native / CNY / USD / Both choice
+    (`providerCurrency`), applied to its own spend rows; the total keeps one
+    global currency because mixed currencies cannot be summed. USD spend is
+    priced from a separate USD book stored as `costUsd` per ledger row, not
+    divided from CNY; rows recorded before the book fall back to conversion.
+
 ## Install
 
 ```powershell

@@ -34,6 +34,8 @@ export interface UsageSettings {
   /** Reader-chosen balance and plan order (comma-separated provider ids). */
   balanceOrder?: string
   planOrder?: string
+  /** Per-provider spend currency (`provider:choice,...`). */
+  providerCurrency?: string
 }
 
 /** The display currencies the spend figures offer. */
@@ -60,6 +62,7 @@ export interface UsageSettingsCardState extends CardShell {
   hiddenPlans: FieldState
   balanceOrder: FieldState
   planOrder: FieldState
+  providerCurrency: FieldState
 }
 
 /** The card's snapshot and its form actions, as the section receives them. */
@@ -91,6 +94,7 @@ export class UsageSettingsCardController {
       textField('hiddenPlans', 'pick'),
       textField('balanceOrder', 'pick'),
       textField('planOrder', 'pick'),
+      textField('providerCurrency', 'pick'),
     ])
     this.store = this.form.bind(() => ({
       ...this.form.shell(),
@@ -110,6 +114,7 @@ export class UsageSettingsCardController {
       hiddenPlans: this.form.field('hiddenPlans'),
       balanceOrder: this.form.field('balanceOrder'),
       planOrder: this.form.field('planOrder'),
+      providerCurrency: this.form.field('providerCurrency'),
     }))
   }
 

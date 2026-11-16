@@ -151,6 +151,7 @@ function reviveTotals(value: unknown): UsageTokenTotals | undefined {
     reasoningTokens: num('reasoningTokens'),
     calls: num('calls'),
     cost: num('cost'),
+    costUsd: num('costUsd'),
   }
 }
 

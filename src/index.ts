@@ -70,6 +70,8 @@ export interface UsageConfigFields {
   balanceOrder?: ConfigField<string>
   /** Reader-chosen plan order (comma-separated provider ids). */
   planOrder?: ConfigField<string>
+  /** Per-provider spend currency (`provider:choice,...`). */
+  providerCurrency?: ConfigField<string>
 }
 
 /**
@@ -112,6 +114,7 @@ export const Config = z.object({
   hiddenPlans: z.string().default('').volatile(),
   balanceOrder: z.string().default('').volatile(),
   planOrder: z.string().default('').volatile(),
+  providerCurrency: z.string().default('').volatile(),
 })
 
 export interface ResolvedConfig extends UsageServiceOptions {

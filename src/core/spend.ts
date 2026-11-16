@@ -60,3 +60,46 @@ export function formatSpend(costCny: number, display: SpendDisplay = DEFAULT_SPE
   }
   return '¥' + safe.toFixed(2)
 }
+
+/** How one provider's spend should read. */
+export type ProviderCurrency = 'native' | 'CNY' | 'USD' | 'both'
+
+/**
+ * Parse the per-provider currency list (`provider:choice,...`).
+ * Unknown choices are ignored; a provider absent from the map reads native.
+ * @param text - the stored list.
+ * @returns the choice for each named provider.
+ */
+export function parseProviderCurrencies(text: string): Map<string, ProviderCurrency> {
+  const map = new Map<string, ProviderCurrency>()
+  for (const entry of text.split(',')) {
+    const at = entry.indexOf(':')
+    if (at < 0) continue
+    const id = entry.slice(0, at).trim()
+    const choice = entry.slice(at + 1).trim()
+    if (id === '') continue
+    if (choice === 'native' || choice === 'CNY' || choice === 'USD' || choice === 'both') map.set(id, choice)
+  }
+  return map
+}
+
+/**
+ * Format one provider's spend in the currency the reader picked.
+ * USD prefers the stored USD-book estimate; a row recorded before that book
+ * existed falls back to converting the CNY estimate at the display rate.
+ * @param costCny - the provider's CNY estimate.
+ * @param costUsd - the provider's USD-book estimate (0 when unavailable).
+ * @param choice - the provider's configured currency.
+ * @param display - the display rate used for the USD fallback.
+ * @returns the formatted amount.
+ */
+export function formatProviderSpend(costCny: number, costUsd: number, choice: ProviderCurrency, display: SpendDisplay = DEFAULT_SPEND_DISPLAY): string {
+  const cny = Number.isFinite(costCny) && costCny > 0 ? costCny : 0
+  const rate = Number.isFinite(display.cnyPerUsd) && display.cnyPerUsd > 0 ? display.cnyPerUsd : DEFAULT_CNY_PER_USD
+  const usd = Number.isFinite(costUsd) && costUsd > 0 ? costUsd : cny / rate
+  const cnyText = '¥' + cny.toFixed(2)
+  const usdText = '$' + usd.toFixed(2)
+  if (choice === 'USD') return usdText
+  if (choice === 'both') return cnyText + ' / ' + usdText
+  return cnyText
+}

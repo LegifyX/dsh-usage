@@ -29,11 +29,17 @@ export interface UsageTokenTotals {
    * buckets recorded before a price-book change keep the old pricing.
    */
   cost: number
+  /**
+   * The same estimate priced from DeepSeek's USD book, for readers who show
+   * spend in dollars. 0 when the provider is unpriced or the row predates the
+   * USD book; a display falls back to converting `cost`.
+   */
+  costUsd: number
 }
 
 /** A zeroed totals bucket. */
 export function emptyTotals(): UsageTokenTotals {
-  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0, calls: 0, cost: 0 }
+  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0, calls: 0, cost: 0, costUsd: 0 }
 }
 
 /** Add `right` into `left` in place. */
@@ -45,6 +51,7 @@ export function addTotals(left: UsageTokenTotals, right: Readonly<UsageTokenTota
   left.reasoningTokens += right.reasoningTokens
   left.calls += right.calls
   left.cost += right.cost
+  left.costUsd += right.costUsd
   return left
 }
 

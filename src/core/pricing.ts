@@ -71,6 +71,25 @@ const PRO_PRICE: ModelPrice = {
 }
 
 /**
+ * The same price rows in USD per million tokens. DeepSeek publishes a USD book
+ * alongside the CNY one; the two are separate numbers, so USD spend is priced
+ * from this table instead of dividing the CNY estimate by a live rate. Update
+ * both books together when DeepSeek changes a price.
+ */
+const FLASH_PRICE_USD: ModelPrice = {
+  cacheHit: { offPeak: 0.003, peak: 0.006 },
+  inputMiss: { offPeak: 0.14, peak: 0.28 },
+  output: { offPeak: 0.56, peak: 1.12 },
+}
+
+/** USD book for the pro row; superseded by the flash row at the same instant. */
+const PRO_PRICE_USD: ModelPrice = {
+  cacheHit: { offPeak: 0.021, peak: 0.042 },
+  inputMiss: { offPeak: 0.63, peak: 1.25 },
+  output: { offPeak: 1.88, peak: 3.75 },
+}
+
+/**
  * The instant DeepSeek starts serving `deepseek-v4-pro` requests from
  * V4.1-Flash and billing the flash row: 2026-09-14 12:00 Beijing (UTC+8).
  * Drop the pro row's time fence once V4.1 Pro ships with a published row.
@@ -164,6 +183,31 @@ export function deepseekPeriodAt(ms: number, calendar: PublicHolidayCalendar = C
 function priceFor(model: string, atMs: number): ModelPrice {
   const proPriced = model.includes('v4-pro') && atMs < V4_PRO_FOLDED_INTO_FLASH_AT_MS
   return proPriced ? PRO_PRICE : FLASH_PRICE
+}
+
+/** The USD price row for a model id; mirrors {@link priceFor}. */
+function usdPriceFor(model: string, atMs: number): ModelPrice {
+  const proPriced = model.includes('v4-pro') && atMs < V4_PRO_FOLDED_INTO_FLASH_AT_MS
+  return proPriced ? PRO_PRICE_USD : FLASH_PRICE_USD
+}
+
+/**
+ * Estimate one call's DeepSeek spend in USD from its token totals, using the
+ * USD price book and the same peak/off-peak clock as the CNY estimate.
+ * @param model - the route's model id.
+ * @param totals - the call's token totals.
+ * @param atMs - the call instant, which selects peak or off-peak.
+ * @param calendar - the public-holiday calendar the peak rule consults.
+ * @returns the estimated spend in USD, rounded to micro-USD.
+ */
+export function deepseekModelSpendUsd(model: string, totals: Readonly<UsageTokenTotals>, atMs: number, calendar: PublicHolidayCalendar = CN_PUBLIC_HOLIDAYS): number {
+  const price = usdPriceFor(model, atMs)
+  const period = deepseekPeriodAt(atMs, calendar)
+  const column = period.peak ? 'peak' : 'offPeak'
+  const spend = (totals.cacheReadTokens * price.cacheHit[column]
+    + (totals.inputTokens + totals.cacheWriteTokens) * price.inputMiss[column]
+    + totals.outputTokens * price.output[column]) / 1_000_000
+  return Math.round(spend * 1e6) / 1e6
 }
 
 /**

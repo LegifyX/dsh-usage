@@ -557,7 +557,10 @@ export class UsageService {
     totals.cacheWriteTokens = usage.cacheWriteTokens ?? 0
     totals.reasoningTokens = usage.reasoningTokens ?? 0
     totals.calls = 1
-    if (isDeepSeekProviderRoute(provider)) totals.cost = deepseekModelSpend(model, totals, atMs)
+    if (isDeepSeekProviderRoute(provider)) {
+      totals.cost = deepseekModelSpend(model, totals, atMs)
+      totals.costUsd = deepseekModelSpendUsd(model, totals, atMs)
+    }
     return totals
   }
 

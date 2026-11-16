@@ -11,6 +11,7 @@ import { ChoiceField, PluginSettingsCard, ToggleSwitch, ValueField } from './Plu
 import { POLL_INTERVAL_RANGE, SPEND_CURRENCIES, type UsageSettingsCardFace, type UsageSettingsCardState } from './usage-settings-card.ts'
 import type { ProviderSnapshotView } from '../core/types.ts'
 import { orderByList } from './order.ts'
+import { parseProviderCurrencies, type ProviderCurrency } from '../core/spend.ts'
 
 /**
  * The page's card: the plugin switch in the header, the statistics and the
@@ -270,6 +271,14 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
     invalidLabel: t('settings.invalidNumber'),
     disabled: !card.writable
   }
+  const providerRows = props.providers.filter(provider => provider.credential !== 'none'
+    && (provider.balance !== undefined || provider.balances !== undefined || provider.plan !== undefined || provider.quota !== undefined))
+  const writeProviderCurrency = (id: string, choice: ProviderCurrency | undefined): void => {
+    const next = parseProviderCurrencies(card.providerCurrency.text)
+    if (choice === undefined) next.delete(id)
+    else next.set(id, choice)
+    face.edit('providerCurrency', [...next].map(([key, value]) => key + ':' + value).join(','))
+  }
   return (
     <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
       <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
@@ -310,6 +319,34 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           />
         )
         : null}
+      {providerRows.length > 0 && (
+        <>
+          <span className={styles.settingsSubhead}>{t('usage.config.providerCurrencies')}</span>
+          <p className={styles.settingsGroupHint}>{t('usage.config.providerCurrenciesHint')}</p>
+          {providerRows.map(provider => (
+            <ChoiceField
+              key={provider.provider}
+              id={'settings-usage-currency-' + provider.provider}
+              label={provider.displayName}
+              presentation="segment"
+              choices={[
+                { value: 'native', label: t('usage.currency.native') },
+                { value: 'CNY', label: 'CNY' },
+                { value: 'USD', label: 'USD' },
+                { value: 'both', label: t('usage.currency.both') },
+              ]}
+              overriddenLabel={t('settings.overridden')}
+              resetLabel={t('settings.reset')}
+              disabled={!card.writable}
+              text={parseProviderCurrencies(card.providerCurrency.text).get(provider.provider) ?? 'native'}
+              overridden={parseProviderCurrencies(card.providerCurrency.text).has(provider.provider)}
+              invalid={false}
+              onEdit={(text) => { writeProviderCurrency(provider.provider, text as ProviderCurrency) }}
+              onReset={() => { writeProviderCurrency(provider.provider, undefined) }}
+            />
+          ))}
+        </>
+      )}
     </section>
   )
 }

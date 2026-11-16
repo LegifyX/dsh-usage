@@ -24,7 +24,7 @@ import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
 import { voucherData, drawVoucher, faceValue, formatDay, formatDenomination, loadVoucherArt } from './voucher.ts'
 import type { BalanceView, ObservedSpendView, ProviderSnapshotView, QuotaMeterView, QuotaView, SpendLimitView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
-import { formatSpend, type SpendDisplay } from '../core/spend.ts'
+import { formatProviderSpend, formatSpend, parseProviderCurrencies, type SpendDisplay } from '../core/spend.ts'
 
 export type { UsageSettings } from './usage-settings-card.ts'
 
@@ -370,6 +370,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const parseHidden = (text: string): Set<string> => new Set(text.split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
   const hiddenBalances = parseHidden(card.hiddenBalances.text)
   const hiddenPlans = parseHidden(card.hiddenPlans.text)
+  const providerCurrencies = parseProviderCurrencies(card.providerCurrency.text)
   const previewValues: FootCardValues = {
     footShowSpend: card.footShowSpend.text !== 'false',
     footShowUsage: card.footShowUsage.text !== 'false',
@@ -461,7 +462,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                         {snapshot.providers.find((provider) => provider.provider === row.provider)?.displayName ?? row.provider}
                         {current.provider === row.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
                       </span>
-                      <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` · ${formatSpend(row.totals.cost, snapshot.display)}` : ''}</span>
+                      <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` · ${formatProviderSpend(row.totals.cost, row.totals.costUsd, providerCurrencies.get(row.provider) ?? 'native', snapshot.display)}` : ''}</span>
                     </div>
                   ))}
                 </div>
