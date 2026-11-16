@@ -47,7 +47,6 @@ export function UsagePage(props: { card: UsageSettingsCardState; face: UsageSett
         onDiscard={face.discard}
       >
         {props.children}
-        {card.exposed ? <SettingsRows card={card} face={face} providers={props.providers ?? []} /> : null}
       </PluginSettingsCard>
     </ul>
   )
@@ -78,6 +77,20 @@ export function SidebarCardSettings(props: { card: UsageSettingsCardState; face:
     <div className={styles.card} data-dsh-part="foot-settings">
       <span className={styles.cardTitle}>{t('usage.config.footTitle')}</span>
       <p className={styles.settingsGroupHint}>{t('usage.config.footHint')}</p>
+      <ValueField
+        id="settings-usage-poll-interval"
+        label={t('usage.config.pollIntervalSec')}
+        hint={t('usage.config.pollIntervalHint')}
+        numeric
+        range={POLL_INTERVAL_RANGE}
+        overriddenLabel={t('settings.overridden')}
+        resetLabel={t('settings.reset')}
+        invalidLabel={t('settings.invalidNumber')}
+        disabled={!card.writable}
+        {...card.pollIntervalSec}
+        onEdit={(text) => { face.edit('pollIntervalSec', text) }}
+        onReset={() => { face.resetField('pollIntervalSec') }}
+      />
       <ToggleRow
         label={t('usage.config.footShowSpend')}
         checked={card.footShowSpend.text !== 'false'}
@@ -342,35 +355,4 @@ export function CurrencySettings(props: { card: UsageSettingsCardState; face: Us
 /** Split a comma-separated hidden-provider list into a set. */
 function splitHidden(text: string): Set<string> {
   return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
-}
-
-/**
- * The display rows under the statistics. Each control writes through the card
- * form: the currency pick at once, a typed number after a pause or on Enter.
- * The rate only matters while spend shows in dollars, so it appears then.
- */
-function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
-  const { card, face } = props
-  const fieldProps = {
-    overriddenLabel: t('settings.overridden'),
-    resetLabel: t('settings.reset'),
-    invalidLabel: t('settings.invalidNumber'),
-    disabled: !card.writable
-  }
-  return (
-    <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
-      <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
-      <ValueField
-        id="settings-usage-poll-interval"
-        label={t('usage.config.pollIntervalSec')}
-        hint={t('usage.config.pollIntervalHint')}
-        numeric
-        range={POLL_INTERVAL_RANGE}
-        {...fieldProps}
-        {...card.pollIntervalSec}
-        onEdit={(text) => { face.edit('pollIntervalSec', text) }}
-        onReset={() => { face.resetField('pollIntervalSec') }}
-      />
-    </section>
-  )
 }

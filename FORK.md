@@ -142,10 +142,12 @@ Four changes, all visible in the Usage card and the sidebar glance card:
 12. **Currency settings live on the Usage tab.** The global display currency,
     its rate, and the per-provider choices moved out of the shared settings
     rows into a Currency card on the Usage tab, so they no longer repeat under
-    Plans, Token Bank and Sidebar. Only poll interval stays page-wide. Choosing
+    Plans, Token Bank and Sidebar. Choosing
     Native drops the per-provider override instead of storing a redundant entry.
     Each provider's choices render as one inline row (label, then compressed
-    buttons) so the fourth option cannot wrap onto its own line.
+    buttons) so the fourth option cannot wrap onto its own line. Poll interval
+    moved into the Sidebar tab too, so no shared settings row is left: every
+    control belongs to exactly one tab.
 
 ## Install
 
