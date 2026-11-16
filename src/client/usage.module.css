@@ -773,3 +773,33 @@
   margin-left: auto;
   opacity: 0.45;
 }
+
+/* Sidebar-card composition rows: one label and one pill switch per row. */
+.settingsToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.settingsToggle:first-of-type {
+  border-top: none;
+}
+
+.settingsToggleLabel {
+  font-size: 13px;
+}
+
+.settingsGroupHint {
+  margin: 0 0 4px;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* Tighter variant the sidebar card opts into via the Compact spacing setting. */
+.footMainCompact {
+  gap: 2px;
+  padding: 5px 8px;
+}

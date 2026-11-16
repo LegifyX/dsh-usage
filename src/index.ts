@@ -51,6 +51,17 @@ export interface UsageConfigFields {
   spendCurrency?: ConfigField<'CNY' | 'USD'>
   /** CNY per USD, consulted only while the display currency is USD. */
   cnyPerUsd?: ConfigField<number>
+  /** Sidebar glance card rows; every switch defaults to on. */
+  footShowSpend?: ConfigField<boolean>
+  footShowUsage?: ConfigField<boolean>
+  footShowBalances?: ConfigField<boolean>
+  footShowMeters?: ConfigField<boolean>
+  /** Which subscription window the sidebar meter block shows. */
+  footMeterWindow?: ConfigField<'week' | 'month'>
+  footShowPeak?: ConfigField<boolean>
+  footShowUpdated?: ConfigField<boolean>
+  /** Tighter padding/gaps in the sidebar card. */
+  footCompact?: ConfigField<boolean>
 }
 
 /**
@@ -77,6 +88,16 @@ export const Config = z.object({
   // instead of failing the card.
   spendCurrency: z.union(['CNY', 'USD'] as const).default('CNY').volatile(),
   cnyPerUsd: z.number().min(0.01).max(1000).default(DEFAULT_CNY_PER_USD).volatile(),
+  // Sidebar glance card composition. Each row is optional so a profile that
+  // predates these fields keeps the original card.
+  footShowSpend: z.boolean().default(true).volatile(),
+  footShowUsage: z.boolean().default(true).volatile(),
+  footShowBalances: z.boolean().default(true).volatile(),
+  footShowMeters: z.boolean().default(true).volatile(),
+  footMeterWindow: z.union(['week', 'month'] as const).default('week').volatile(),
+  footShowPeak: z.boolean().default(true).volatile(),
+  footShowUpdated: z.boolean().default(true).volatile(),
+  footCompact: z.boolean().default(false).volatile(),
 })
 
 export interface ResolvedConfig extends UsageServiceOptions {

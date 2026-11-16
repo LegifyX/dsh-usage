@@ -50,6 +50,21 @@ export function UsagePage(props: { card: UsageSettingsCardState; face: UsageSett
   )
 }
 
+/** One label + pill switch row, matching the plugin switch in the header. */
+function ToggleRow(props: { label: string; checked: boolean; disabled?: boolean; onChange: (next: boolean) => void }): ReactNode {
+  return (
+    <div className={styles.settingsToggle}>
+      <span className={styles.settingsToggleLabel}>{props.label}</span>
+      <ToggleSwitch
+        ariaLabel={props.label}
+        checked={props.checked}
+        disabled={props.disabled}
+        onChange={props.onChange}
+      />
+    </div>
+  )
+}
+
 /**
  * The display rows under the statistics. Each control writes through the card
  * form: the currency pick at once, a typed number after a pause or on Enter.
@@ -103,6 +118,64 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           />
         )
         : null}
+      <section className={styles.settingsGroup} aria-labelledby="settings-usage-foot-title" data-dsh-part="foot-settings">
+        <h3 className={styles.groupTitle} id="settings-usage-foot-title">{t('usage.config.footTitle')}</h3>
+        <p className={styles.settingsGroupHint}>{t('usage.config.footHint')}</p>
+        <ToggleRow
+          label={t('usage.config.footShowSpend')}
+          checked={card.footShowSpend.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowSpend', String(next))}
+        />
+        <ToggleRow
+          label={t('usage.config.footShowUsage')}
+          checked={card.footShowUsage.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowUsage', String(next))}
+        />
+        <ToggleRow
+          label={t('usage.config.footShowBalances')}
+          checked={card.footShowBalances.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowBalances', String(next))}
+        />
+        <ToggleRow
+          label={t('usage.config.footShowMeters')}
+          checked={card.footShowMeters.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowMeters', String(next))}
+        />
+        <ChoiceField
+          id="settings-usage-foot-window"
+          label={t('usage.config.footMeterWindow')}
+          presentation="segment"
+          choices={[{ value: 'week', label: t('usage.quota.week') }, { value: 'month', label: t('usage.quota.month') }]}
+          overriddenLabel={t('settings.overridden')}
+          resetLabel={t('settings.reset')}
+          disabled={!card.writable}
+          {...card.footMeterWindow}
+          onEdit={(text) => { face.edit('footMeterWindow', text) }}
+          onReset={() => { face.resetField('footMeterWindow') }}
+        />
+        <ToggleRow
+          label={t('usage.config.footShowPeak')}
+          checked={card.footShowPeak.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowPeak', String(next))}
+        />
+        <ToggleRow
+          label={t('usage.config.footShowUpdated')}
+          checked={card.footShowUpdated.text !== 'false'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footShowUpdated', String(next))}
+        />
+        <ToggleRow
+          label={t('usage.config.footCompact')}
+          checked={card.footCompact.text === 'true'}
+          disabled={!card.writable}
+          onChange={(next) => face.edit('footCompact', String(next))}
+        />
+      </section>
     </section>
   )
 }

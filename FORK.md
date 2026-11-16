@@ -103,6 +103,12 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    discovery is retried after a week, and the Usage header's **Re-scan limits**
    button clears the cache and re-probes now.
 
+7. **Sidebar-card composition.** The Usage settings page gains a *Sidebar card*
+   group: one pill switch per row (spend headline, tokens/calls, balances, plan
+   meters, peak clock, updated time), a meter-window choice (rolling 7 days or
+   the month), and a compact-spacing switch. Every field defaults to the
+   original card, so an existing profile looks unchanged.
+
 ## Install
 
 ```powershell

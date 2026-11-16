@@ -181,9 +181,9 @@ function cardClass(collapsed: boolean): string {
 }
 
 /** The rolling-7-day meter of the first provider that reports one (a flat plan). */
-function weekPlan(snapshot: UsageOverviewView): { name: string; meter: QuotaMeterView } | undefined {
+function planMeter(snapshot: UsageOverviewView, window: 'week' | 'month'): { name: string; meter: QuotaMeterView } | undefined {
   for (const provider of snapshot.providers) {
-    const meter = provider.quota?.meters.find((entry) => entry.key === 'week')
+    const meter = provider.quota?.meters.find((entry) => entry.key === window)
     if (meter !== undefined) return { name: provider.displayName, meter }
   }
   return undefined
@@ -220,7 +220,16 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   const [, bump] = useState(0)
   useEffect(() => settings.subscribe(() => bump((count) => count + 1)), [settings])
   useEffect(() => locale?.subscribe(() => bump((count) => count + 1)), [locale])
-  const enabled = settings.getSnapshot().value?.enabled ?? true
+  const values = settings.getSnapshot().value
+  const enabled = values?.enabled ?? true
+  const showSpend = values?.footShowSpend !== false
+  const showUsage = values?.footShowUsage !== false
+  const showBalances = values?.footShowBalances !== false
+  const showMeters = values?.footShowMeters !== false
+  const meterWindow: 'week' | 'month' = values?.footMeterWindow === 'month' ? 'month' : 'week'
+  const showPeak = values?.footShowPeak !== false
+  const showUpdated = values?.footShowUpdated !== false
+  const compact = values?.footCompact === true
 
   // The collapse choice is one localStorage flag, read at mount and persisted
   // on every flip (the old sidebar strip used the same contract shape).
@@ -299,7 +308,7 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
 
   const head = headline(snapshot)
   const balances = balanceLine(snapshot)
-  const plan = weekPlan(snapshot)
+  const plan = planMeter(snapshot, meterWindow)
   // The published peak/off-peak clock is always in force, so the card carries
   // it on every route and on empty days instead of only when the day's spend
   // happened to run through the official family.
@@ -324,29 +333,37 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
 
   return (
     <div className={cardClass(false)} data-dsh-plugin="usage" data-dsh-part="foot-card">
-      <button type="button" className={styles.footMain} data-dsh-part="foot-card-main" aria-label={t('usage.foot.open')} title={t('usage.foot.open')} onClick={onOpen}>
-        <span className={styles.footHead}>
-          <span className={styles.footTitle}><GaugeIcon />{head.label}</span>
-          <span className={styles.footValue}>{head.value}</span>
-        </span>
-        <span className={styles.footLine} data-dsh-part="foot-card-usage">{usageLine(snapshot, head.tokenFallback)}</span>
-        {balances !== undefined && <span className={styles.footLine} data-dsh-part="foot-card-balances">{balances}</span>}
-        {plan !== undefined && (
+      <button type="button" className={compact ? `${styles.footMain} ${styles.footMainCompact}` : styles.footMain} data-dsh-part="foot-card-main" aria-label={t('usage.foot.open')} title={t('usage.foot.open')} onClick={onOpen}>
+        {showSpend && (
+          <span className={styles.footHead}>
+            <span className={styles.footTitle}><GaugeIcon />{head.label}</span>
+            <span className={styles.footValue}>{head.value}</span>
+          </span>
+        )}
+        {showUsage && <span className={styles.footLine} data-dsh-part="foot-card-usage">{usageLine(snapshot, head.tokenFallback)}</span>}
+        {showBalances && balances !== undefined && <span className={styles.footLine} data-dsh-part="foot-card-balances">{balances}</span>}
+        {showMeters && plan !== undefined && (
           <span className={styles.footPlan} data-dsh-part="foot-card-plan">
-            <span className={styles.footPlanName}>{plan.name} · 7d</span>
+            <span className={styles.footPlanName}>{plan.name} · {meterWindow === 'month' ? t('usage.quota.month') : '7d'}</span>
             <FootMeterRow kind="in" used={plan.meter.usedInput} limit={plan.meter.limitInput} />
             <FootMeterRow kind="out" used={plan.meter.usedOutput} limit={plan.meter.limitOutput} />
           </span>
         )}
-        <span className={styles.footFoot} data-dsh-part="foot-card-foot">
-          <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />
-          <span className={styles.footPeakClock}>
-            {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
+        {(showPeak || showUpdated) && (
+          <span className={styles.footFoot} data-dsh-part="foot-card-foot">
+            {showPeak && <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />}
+            {showPeak && (
+              <span className={styles.footPeakClock}>
+                {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
+              </span>
+            )}
+            {showUpdated && (
+              <span className={styles.footMeta} title={t('usage.updated', { time: formatClock(snapshot.updatedAt) })}>
+                {formatClock(snapshot.updatedAt)}
+              </span>
+            )}
           </span>
-          <span className={styles.footMeta} title={t('usage.updated', { time: formatClock(snapshot.updatedAt) })}>
-            {formatClock(snapshot.updatedAt)}
-          </span>
-        </span>
+        )}
       </button>
       {toggle}
     </div>

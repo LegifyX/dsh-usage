@@ -17,6 +17,16 @@ export interface UsageSettings {
   spendCurrency?: 'CNY' | 'USD'
   /** CNY per USD, consulted only while the display currency is USD. */
   cnyPerUsd?: number
+  /** Sidebar glance card rows. */
+  footShowSpend?: boolean
+  footShowUsage?: boolean
+  footShowBalances?: boolean
+  footShowMeters?: boolean
+  /** Subscription window the sidebar meter block shows. */
+  footMeterWindow?: 'week' | 'month'
+  footShowPeak?: boolean
+  footShowUpdated?: boolean
+  footCompact?: boolean
 }
 
 /** The display currencies the spend figures offer. */
@@ -31,6 +41,14 @@ export interface UsageSettingsCardState extends CardShell {
   pollIntervalSec: FieldState
   spendCurrency: FieldState
   cnyPerUsd: FieldState
+  footShowSpend: FieldState
+  footShowUsage: FieldState
+  footShowBalances: FieldState
+  footShowMeters: FieldState
+  footMeterWindow: FieldState
+  footShowPeak: FieldState
+  footShowUpdated: FieldState
+  footCompact: FieldState
 }
 
 /** The card's snapshot and its form actions, as the section receives them. */
@@ -50,6 +68,14 @@ export class UsageSettingsCardController {
       numberField('pollIntervalSec', { integer: true, min: POLL_INTERVAL_RANGE.min }),
       choiceField('spendCurrency', SPEND_CURRENCIES),
       numberField('cnyPerUsd', { min: 0.01 }),
+      booleanField('footShowSpend'),
+      booleanField('footShowUsage'),
+      booleanField('footShowBalances'),
+      booleanField('footShowMeters'),
+      choiceField('footMeterWindow', ['week', 'month'] as const),
+      booleanField('footShowPeak'),
+      booleanField('footShowUpdated'),
+      booleanField('footCompact'),
     ])
     this.store = this.form.bind(() => ({
       ...this.form.shell(),
@@ -57,6 +83,14 @@ export class UsageSettingsCardController {
       pollIntervalSec: this.form.field('pollIntervalSec'),
       spendCurrency: this.form.field('spendCurrency'),
       cnyPerUsd: this.form.field('cnyPerUsd'),
+      footShowSpend: this.form.field('footShowSpend'),
+      footShowUsage: this.form.field('footShowUsage'),
+      footShowBalances: this.form.field('footShowBalances'),
+      footShowMeters: this.form.field('footShowMeters'),
+      footMeterWindow: this.form.field('footMeterWindow'),
+      footShowPeak: this.form.field('footShowPeak'),
+      footShowUpdated: this.form.field('footShowUpdated'),
+      footCompact: this.form.field('footCompact'),
     }))
   }
 
