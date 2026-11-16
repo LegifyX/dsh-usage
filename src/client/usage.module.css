@@ -813,3 +813,58 @@
   text-transform: uppercase;
   opacity: 0.55;
 }
+
+/* The Sidebar tab's live copy of the seated card. */
+.footPreviewFrame {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+}
+
+/* One card toggle plus its move-up/move-down pair. */
+.orderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.orderRow:first-of-type {
+  border-top: none;
+}
+
+.orderRow .settingsToggleLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.orderButtons {
+  display: flex;
+  gap: 2px;
+}
+
+.orderBtn {
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  background: none;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+
+.orderBtn:hover:not(:disabled) {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.orderBtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}

@@ -119,6 +119,14 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    the deeprelay meter card moved there from the Usage tab. The sidebar's
    balances line and plan block follow the same switches.
 
+9. **A Sidebar tab, one row per card, reader-chosen order.** The Usage page
+   gains a fourth *Sidebar* tab holding a live copy of the seated card and every
+   sidebar-card switch (they no longer repeat under the other tabs). Balances
+   and plans each render on their own row instead of being joined into one
+   line, and the Cards group gives every provider a move-up/move-down pair
+   (`balanceOrder`, `planOrder`), so the reader sets the order once and both the
+   page cards and the sidebar follow it.
+
 ## Install
 
 ```powershell

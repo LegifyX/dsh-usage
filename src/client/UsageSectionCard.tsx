@@ -16,7 +16,9 @@ import styles from './usage.module.css'
 import cardCss from './settings-card.module.css'
 import { PeakBadge } from './PeakBadge.tsx'
 import { SegmentGroup } from './SegmentGroup.tsx'
-import { UsagePage } from './UsagePage.tsx'
+import { SidebarCardSettings, UsagePage } from './UsagePage.tsx'
+import { orderByList } from './order.ts'
+import { UsageFootPreview, type FootCardValues } from './UsageFootCard.tsx'
 import type { UsageSettingsCardFace } from './usage-settings-card.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
@@ -368,10 +370,22 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const parseHidden = (text: string): Set<string> => new Set(text.split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
   const hiddenBalances = parseHidden(card.hiddenBalances.text)
   const hiddenPlans = parseHidden(card.hiddenPlans.text)
+  const previewValues: FootCardValues = {
+    footShowSpend: card.footShowSpend.text !== 'false',
+    footShowUsage: card.footShowUsage.text !== 'false',
+    footShowBalances: card.footShowBalances.text !== 'false',
+    footShowMeters: card.footShowMeters.text !== 'false',
+    footMeterWindow: card.footMeterWindow.text === 'month' ? 'month' : 'week',
+    footShowPeak: card.footShowPeak.text !== 'false',
+    footShowUpdated: card.footShowUpdated.text !== 'false',
+    footCompact: card.footCompact.text === 'true',
+    hiddenBalances: card.hiddenBalances.text,
+    hiddenPlans: card.hiddenPlans.text,
+  }
   // A plan is any subscription fact: the DeepSeek billing windows (`plan`) and
   // a deeprelay-style token quota (`quota`) are the same idea to a reader.
-  const planProviders = snapshot.providers.filter((provider) => isConfigured(provider)
-    && (provider.plan !== undefined || provider.quota !== undefined || provider.planSupported === true || provider.quotaSupported === true))
+  const planProviders = orderByList(snapshot.providers.filter((provider) => isConfigured(provider)
+    && (provider.plan !== undefined || provider.quota !== undefined || provider.planSupported === true || provider.quotaSupported === true)), card.planOrder.text)
     .filter((provider) => !hiddenPlans.has(provider.provider))
 
   return (
@@ -461,8 +475,8 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                 // Include rows whose balance is deliberately not applicable
                 // (another origin's endpoint): the row itself explains why, which
                 // a single generic line cannot (#1688).
-                const rows = configured
-                  .filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.balance !== undefined))
+                const rows = orderByList(configured
+                  .filter((provider) => provider.balanceSupported === true || provider.balanceSupported === false || (provider.balanceSupported === undefined && provider.balance !== undefined)), card.balanceOrder.text)
                   .filter((provider) => !hiddenBalances.has(provider.provider))
                 if (rows.length === 0) {
                   if (configured.length === 0) return <span className={styles.muted}>{t('usage.balance.noneConfigured')}</span>
@@ -495,6 +509,16 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
               : <PlanCard key={provider.provider} provider={provider} current={current.provider} />)
         )}
 
+        {tab === 'sidebar' && (
+          <>
+            <div className={styles.footPreviewFrame} data-dsh-part="foot-preview">
+              <span className={styles.cardTitle}>{t('usage.sidebar.preview')}</span>
+              <UsageFootPreview snapshot={snapshot} values={previewValues} />
+            </div>
+            <SidebarCardSettings card={card} face={settingsCard} />
+          </>
+        )}
+
         {tab === 'bank' && (
           <>
             <DayPicker
@@ -523,7 +547,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
 }
 
 /** The statistics tabs, in their order on the page. */
-const USAGE_TABS = ['usage', 'plans', 'bank'] as const
+const USAGE_TABS = ['usage', 'plans', 'bank', 'sidebar'] as const
 type UsageTab = (typeof USAGE_TABS)[number]
 
 /** How many model sub-bars render under one provider bar. */

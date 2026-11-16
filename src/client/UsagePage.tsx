@@ -10,6 +10,7 @@ import styles from './usage.module.css'
 import { ChoiceField, PluginSettingsCard, ToggleSwitch, ValueField } from './PluginSettingsCard.tsx'
 import { POLL_INTERVAL_RANGE, SPEND_CURRENCIES, type UsageSettingsCardFace, type UsageSettingsCardState } from './usage-settings-card.ts'
 import type { ProviderSnapshotView } from '../core/types.ts'
+import { orderByList } from './order.ts'
 
 /**
  * The page's card: the plugin switch in the header, the statistics and the
@@ -66,6 +67,114 @@ function ToggleRow(props: { label: string; checked: boolean; disabled?: boolean;
   )
 }
 
+/**
+ * Every sidebar-card setting, rendered by the Sidebar tab. Kept out of the
+ * shared settings rows so the group does not repeat under all four tabs.
+ */
+export function SidebarCardSettings(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace }): ReactNode {
+  const { card, face } = props
+  return (
+    <div className={styles.card} data-dsh-part="foot-settings">
+      <span className={styles.cardTitle}>{t('usage.config.footTitle')}</span>
+      <p className={styles.settingsGroupHint}>{t('usage.config.footHint')}</p>
+      <ToggleRow
+        label={t('usage.config.footShowSpend')}
+        checked={card.footShowSpend.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowSpend', String(next))}
+      />
+      <ToggleRow
+        label={t('usage.config.footShowUsage')}
+        checked={card.footShowUsage.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowUsage', String(next))}
+      />
+      <ToggleRow
+        label={t('usage.config.footShowBalances')}
+        checked={card.footShowBalances.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowBalances', String(next))}
+      />
+      <ToggleRow
+        label={t('usage.config.footShowMeters')}
+        checked={card.footShowMeters.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowMeters', String(next))}
+      />
+      <ChoiceField
+        id="settings-usage-foot-window"
+        label={t('usage.config.footMeterWindow')}
+        presentation="segment"
+        choices={[{ value: 'week', label: t('usage.quota.week') }, { value: 'month', label: t('usage.quota.month') }]}
+        overriddenLabel={t('settings.overridden')}
+        resetLabel={t('settings.reset')}
+        disabled={!card.writable}
+        {...card.footMeterWindow}
+        onEdit={(text) => { face.edit('footMeterWindow', text) }}
+        onReset={() => { face.resetField('footMeterWindow') }}
+      />
+      <ToggleRow
+        label={t('usage.config.footShowPeak')}
+        checked={card.footShowPeak.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowPeak', String(next))}
+      />
+      <ToggleRow
+        label={t('usage.config.footShowUpdated')}
+        checked={card.footShowUpdated.text !== 'false'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footShowUpdated', String(next))}
+      />
+      <ToggleRow
+        label={t('usage.config.footCompact')}
+        checked={card.footCompact.text === 'true'}
+        disabled={!card.writable}
+        onChange={(next) => face.edit('footCompact', String(next))}
+      />
+    </div>
+  )
+}
+
+/** A card toggle with the move-up/move-down pair that sets its order. */
+function OrderRow(props: {
+  label: string
+  checked: boolean
+  disabled?: boolean
+  canUp: boolean
+  canDown: boolean
+  onUp: () => void
+  onDown: () => void
+  onChange: (next: boolean) => void
+}): ReactNode {
+  return (
+    <div className={styles.orderRow}>
+      <span className={styles.orderButtons}>
+        <button
+          type="button"
+          className={styles.orderBtn}
+          aria-label={t('usage.config.moveUp')}
+          disabled={!props.canUp || props.disabled}
+          onClick={props.onUp}
+        >↑</button>
+        <button
+          type="button"
+          className={styles.orderBtn}
+          aria-label={t('usage.config.moveDown')}
+          disabled={!props.canDown || props.disabled}
+          onClick={props.onDown}
+        >↓</button>
+      </span>
+      <span className={styles.settingsToggleLabel}>{props.label}</span>
+      <ToggleSwitch
+        ariaLabel={props.label}
+        checked={props.checked}
+        disabled={props.disabled}
+        onChange={props.onChange}
+      />
+    </div>
+  )
+}
+
 /** Split a comma-separated hidden-provider list into a set. */
 function splitHidden(text: string): Set<string> {
   return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
@@ -103,6 +212,19 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
     const name = provider.quota?.planName ?? provider.plan?.planName
     return name !== undefined ? `${provider.displayName} · ${name}` : provider.displayName
   }
+  const orderedBalances = orderByList(balanceRows, card.balanceOrder.text)
+  const orderedPlans = orderByList(planRows, card.planOrder.text)
+  const reorder = (kind: 'balance' | 'plan', from: number, delta: number): void => {
+    const rows = kind === 'balance' ? orderedBalances : orderedPlans
+    const ids = rows.map(row => row.provider)
+    const to = from + delta
+    if (to < 0 || to >= ids.length) return
+    const moved = ids[from]!
+    ids[from] = ids[to]!
+    ids[to] = moved
+    face.edit(kind === 'balance' ? 'balanceOrder' : 'planOrder', ids.join(','))
+  }
+
   return (
     <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
       <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
@@ -143,64 +265,6 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           />
         )
         : null}
-      <section className={styles.settingsGroup} aria-labelledby="settings-usage-foot-title" data-dsh-part="foot-settings">
-        <h3 className={styles.groupTitle} id="settings-usage-foot-title">{t('usage.config.footTitle')}</h3>
-        <p className={styles.settingsGroupHint}>{t('usage.config.footHint')}</p>
-        <ToggleRow
-          label={t('usage.config.footShowSpend')}
-          checked={card.footShowSpend.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowSpend', String(next))}
-        />
-        <ToggleRow
-          label={t('usage.config.footShowUsage')}
-          checked={card.footShowUsage.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowUsage', String(next))}
-        />
-        <ToggleRow
-          label={t('usage.config.footShowBalances')}
-          checked={card.footShowBalances.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowBalances', String(next))}
-        />
-        <ToggleRow
-          label={t('usage.config.footShowMeters')}
-          checked={card.footShowMeters.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowMeters', String(next))}
-        />
-        <ChoiceField
-          id="settings-usage-foot-window"
-          label={t('usage.config.footMeterWindow')}
-          presentation="segment"
-          choices={[{ value: 'week', label: t('usage.quota.week') }, { value: 'month', label: t('usage.quota.month') }]}
-          overriddenLabel={t('settings.overridden')}
-          resetLabel={t('settings.reset')}
-          disabled={!card.writable}
-          {...card.footMeterWindow}
-          onEdit={(text) => { face.edit('footMeterWindow', text) }}
-          onReset={() => { face.resetField('footMeterWindow') }}
-        />
-        <ToggleRow
-          label={t('usage.config.footShowPeak')}
-          checked={card.footShowPeak.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowPeak', String(next))}
-        />
-        <ToggleRow
-          label={t('usage.config.footShowUpdated')}
-          checked={card.footShowUpdated.text !== 'false'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footShowUpdated', String(next))}
-        />
-        <ToggleRow
-          label={t('usage.config.footCompact')}
-          checked={card.footCompact.text === 'true'}
-          disabled={!card.writable}
-          onChange={(next) => face.edit('footCompact', String(next))}
-        />
-      </section>
       <section className={styles.settingsGroup} aria-labelledby="settings-usage-cards-title" data-dsh-part="card-settings">
         <h3 className={styles.groupTitle} id="settings-usage-cards-title">{t('usage.config.cardsTitle')}</h3>
         <p className={styles.settingsGroupHint}>{t('usage.config.cardsHint')}</p>
@@ -208,22 +272,30 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           <span className={styles.muted}>{t('usage.config.cardsNone')}</span>
         )}
         {balanceRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.balancesTitle')}</span>}
-        {balanceRows.map(provider => (
-          <ToggleRow
+        {orderedBalances.map((provider, index) => (
+          <OrderRow
             key={'balance-' + provider.provider}
             label={provider.displayName}
             checked={!hiddenBalances.has(provider.provider)}
             disabled={!card.writable}
+            canUp={index > 0}
+            canDown={index < orderedBalances.length - 1}
+            onUp={() => { reorder('balance', index, -1) }}
+            onDown={() => { reorder('balance', index, 1) }}
             onChange={(next) => { toggleHidden('hiddenBalances', provider.provider, next) }}
           />
         ))}
         {planRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.plansTitle')}</span>}
-        {planRows.map(provider => (
-          <ToggleRow
+        {orderedPlans.map((provider, index) => (
+          <OrderRow
             key={'plan-' + provider.provider}
             label={planLabel(provider)}
             checked={!hiddenPlans.has(provider.provider)}
             disabled={!card.writable}
+            canUp={index > 0}
+            canDown={index < orderedPlans.length - 1}
+            onUp={() => { reorder('plan', index, -1) }}
+            onDown={() => { reorder('plan', index, 1) }}
             onChange={(next) => { toggleHidden('hiddenPlans', provider.provider, next) }}
           />
         ))}

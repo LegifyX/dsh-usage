@@ -26,6 +26,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { t } from './locales.ts'
+import { orderByList } from './order.ts'
 import styles from './usage.module.css'
 import { formatClock, PeakBadge } from './PeakBadge.tsx'
 import { formatTokens, type UsageSettings } from './UsageSectionCard.tsx'
@@ -162,17 +163,15 @@ function usageLine(snapshot: UsageOverviewView, tokenFallback: boolean): string 
   return tokenFallback ? calls : formatTokens(totalTokens(totals)) + ' tokens · ' + calls
 }
 
-/** The balance line: up to BALANCE_CAP providers plus a +N overflow marker. */
-function balanceLine(snapshot: UsageOverviewView, hidden: Set<string>): string | undefined {
-  const rows = snapshot.providers.filter(balanceRow).filter((provider) => !hidden.has(provider.provider))
-  if (rows.length === 0) return undefined
-  const shown = rows.slice(0, BALANCE_CAP).map((provider) => {
-    // Every wallet currency rides on one row: an account can hold both CNY
-    // and USD, and dropping either would understate what is spendable.
-    const balances = provider.balances ?? (provider.balance !== undefined ? [provider.balance] : [])
-    return provider.displayName + ' ' + balances.map(formatBalance).join(' / ')
-  })
-  return shown.join(' · ') + (rows.length > BALANCE_CAP ? ' +' + String(rows.length - BALANCE_CAP) : '')
+/** One row per visible balance, in the reader's order. */
+function balanceRows(snapshot: UsageOverviewView, hidden: Set<string>, order: string): { id: string; text: string }[] {
+  return orderByList(snapshot.providers.filter(balanceRow).filter((provider) => !hidden.has(provider.provider)), order)
+    .map((provider) => {
+      // Every wallet currency rides on one row: an account can hold both CNY
+      // and USD, and dropping either would understate what is spendable.
+      const balances = provider.balances ?? (provider.balance !== undefined ? [provider.balance] : [])
+      return { id: provider.provider, text: provider.displayName + ' ' + balances.map(formatBalance).join(' / ') }
+    })
 }
 
 /** Card chrome classes for the current collapse state. */
@@ -180,14 +179,13 @@ function cardClass(collapsed: boolean): string {
   return collapsed ? styles.footCard + ' ' + styles.footCardCollapsed : styles.footCard
 }
 
-/** The rolling-7-day meter of the first provider that reports one (a flat plan). */
-function planMeter(snapshot: UsageOverviewView, window: 'week' | 'month', hidden: Set<string>): { name: string; meter: QuotaMeterView } | undefined {
-  for (const provider of snapshot.providers) {
-    if (hidden.has(provider.provider)) continue
-    const meter = provider.quota?.meters.find((entry) => entry.key === window)
-    if (meter !== undefined) return { name: provider.displayName, meter }
-  }
-  return undefined
+/** One block per visible plan that reports the chosen window. */
+function planMeters(snapshot: UsageOverviewView, window: 'week' | 'month', hidden: Set<string>, order: string): { id: string; name: string; meter: QuotaMeterView }[] {
+  return orderByList(snapshot.providers.filter((provider) => !hidden.has(provider.provider)), order)
+    .flatMap((provider) => {
+      const meter = provider.quota?.meters.find((entry) => entry.key === window)
+      return meter === undefined ? [] : [{ id: provider.provider, name: provider.displayName, meter }]
+    })
 }
 
 /** One compact plan meter: label, track and used/limit with the percentage. */
@@ -209,6 +207,100 @@ function FootMeterRow(props: { kind: 'in' | 'out'; used: number; limit: number }
   )
 }
 
+/** The plain settings values the preview reads (the card state's text form). */
+export interface FootCardValues {
+  footShowSpend?: boolean
+  footShowUsage?: boolean
+  footShowBalances?: boolean
+  footShowMeters?: boolean
+  footMeterWindow?: 'week' | 'month'
+  footShowPeak?: boolean
+  footShowUpdated?: boolean
+  footCompact?: boolean
+  hiddenBalances?: string
+  hiddenPlans?: string
+  balanceOrder?: string
+  planOrder?: string
+}
+
+/** Split a comma-separated hidden-provider list into a set. */
+function previewHidden(text: string | undefined): Set<string> {
+  return new Set((text ?? '').split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
+}
+
+/**
+ * The card's rows, shared by the seated card and the Sidebar tab preview so a
+ * switch cannot make the two disagree. Each balance and each plan gets its own
+ * row, in the reader's order.
+ */
+function FootRows(props: { snapshot: UsageOverviewView; values: FootCardValues }): ReactNode {
+  const { snapshot, values } = props
+  const showSpend = values.footShowSpend !== false
+  const showUsage = values.footShowUsage !== false
+  const showBalances = values.footShowBalances !== false
+  const showMeters = values.footShowMeters !== false
+  const meterWindow: 'week' | 'month' = values.footMeterWindow === 'month' ? 'month' : 'week'
+  const showPeak = values.footShowPeak !== false
+  const showUpdated = values.footShowUpdated !== false
+  const head = headline(snapshot)
+  const balances = balanceRows(snapshot, previewHidden(values.hiddenBalances), values.balanceOrder ?? '')
+  const plans = planMeters(snapshot, meterWindow, previewHidden(values.hiddenPlans), values.planOrder ?? '')
+  const period = deepseekPeriodAt(Date.now())
+  return (
+    <>
+      {showSpend && (
+        <span className={styles.footHead}>
+          <span className={styles.footTitle}><GaugeIcon />{head.label}</span>
+          <span className={styles.footValue}>{head.value}</span>
+        </span>
+      )}
+      {showUsage && <span className={styles.footLine} data-dsh-part="foot-card-usage">{usageLine(snapshot, head.tokenFallback)}</span>}
+      {showBalances && balances.map((row) => (
+        <span key={row.id} className={styles.footLine} data-dsh-part="foot-card-balances">{row.text}</span>
+      ))}
+      {showMeters && plans.map((plan) => (
+        <span key={plan.id} className={styles.footPlan} data-dsh-part="foot-card-plan">
+          <span className={styles.footPlanName}>{plan.name} · {meterWindow === 'month' ? t('usage.quota.month') : '7d'}</span>
+          <FootMeterRow kind="in" used={plan.meter.usedInput} limit={plan.meter.limitInput} />
+          <FootMeterRow kind="out" used={plan.meter.usedOutput} limit={plan.meter.limitOutput} />
+        </span>
+      ))}
+      {(showPeak || showUpdated) && (
+        <span className={styles.footFoot} data-dsh-part="foot-card-foot">
+          {showPeak && <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />}
+          {showPeak && (
+            <span className={styles.footPeakClock}>
+              {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
+            </span>
+          )}
+          {showUpdated && (
+            <span className={styles.footMeta} title={t('usage.updated', { time: formatClock(snapshot.updatedAt) })}>
+              {formatClock(snapshot.updatedAt)}
+            </span>
+          )}
+        </span>
+      )}
+    </>
+  )
+}
+
+/**
+ * A non-interactive copy of the sidebar card, rendered by the Sidebar tab so
+ * the reader sees the exact rows the switches control. It never polls or
+ * toggles its own collapse.
+ */
+export function UsageFootPreview(props: { snapshot: UsageOverviewView; values: FootCardValues }): ReactNode {
+  const { snapshot, values } = props
+  const compact = values.footCompact === true
+  return (
+    <div className={styles.footCard} data-dsh-part="foot-preview-card">
+      <div className={compact ? `${styles.footMain} ${styles.footMainCompact}` : styles.footMain}>
+        <FootRows snapshot={snapshot} values={values} />
+      </div>
+    </div>
+  )
+}
+
 /**
  * Render the foot card content for the current store snapshot.
  * @param props - store, poller, settings form and open callback from the mount.
@@ -223,17 +315,20 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   useEffect(() => locale?.subscribe(() => bump((count) => count + 1)), [locale])
   const values = settings.getSnapshot().value
   const enabled = values?.enabled ?? true
-  const showSpend = values?.footShowSpend !== false
-  const showUsage = values?.footShowUsage !== false
-  const showBalances = values?.footShowBalances !== false
-  const showMeters = values?.footShowMeters !== false
-  const meterWindow: 'week' | 'month' = values?.footMeterWindow === 'month' ? 'month' : 'week'
-  const showPeak = values?.footShowPeak !== false
-  const showUpdated = values?.footShowUpdated !== false
   const compact = values?.footCompact === true
-  const parseHidden = (text: string | undefined): Set<string> => new Set((text ?? '').split(',').map((entry) => entry.trim()).filter((entry) => entry !== ''))
-  const hiddenBalances = parseHidden(values?.hiddenBalances)
-  const hiddenPlans = parseHidden(values?.hiddenPlans)
+  const footValues: FootCardValues = {
+    footShowSpend: values?.footShowSpend,
+    footShowUsage: values?.footShowUsage,
+    footShowBalances: values?.footShowBalances,
+    footShowMeters: values?.footShowMeters,
+    footMeterWindow: values?.footMeterWindow,
+    footShowPeak: values?.footShowPeak,
+    footShowUpdated: values?.footShowUpdated,
+    hiddenBalances: values?.hiddenBalances,
+    hiddenPlans: values?.hiddenPlans,
+    balanceOrder: values?.balanceOrder,
+    planOrder: values?.planOrder,
+  }
 
   // The collapse choice is one localStorage flag, read at mount and persisted
   // on every flip (the old sidebar strip used the same contract shape).
@@ -311,8 +406,6 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   }
 
   const head = headline(snapshot)
-  const balances = balanceLine(snapshot, hiddenBalances)
-  const plan = planMeter(snapshot, meterWindow, hiddenPlans)
   // The published peak/off-peak clock is always in force, so the card carries
   // it on every route and on empty days instead of only when the day's spend
   // happened to run through the official family.
@@ -338,36 +431,7 @@ export function UsageFootCard(props: UsageFootCardProps): ReactNode {
   return (
     <div className={cardClass(false)} data-dsh-plugin="usage" data-dsh-part="foot-card">
       <button type="button" className={compact ? `${styles.footMain} ${styles.footMainCompact}` : styles.footMain} data-dsh-part="foot-card-main" aria-label={t('usage.foot.open')} title={t('usage.foot.open')} onClick={onOpen}>
-        {showSpend && (
-          <span className={styles.footHead}>
-            <span className={styles.footTitle}><GaugeIcon />{head.label}</span>
-            <span className={styles.footValue}>{head.value}</span>
-          </span>
-        )}
-        {showUsage && <span className={styles.footLine} data-dsh-part="foot-card-usage">{usageLine(snapshot, head.tokenFallback)}</span>}
-        {showBalances && balances !== undefined && <span className={styles.footLine} data-dsh-part="foot-card-balances">{balances}</span>}
-        {showMeters && plan !== undefined && (
-          <span className={styles.footPlan} data-dsh-part="foot-card-plan">
-            <span className={styles.footPlanName}>{plan.name} · {meterWindow === 'month' ? t('usage.quota.month') : '7d'}</span>
-            <FootMeterRow kind="in" used={plan.meter.usedInput} limit={plan.meter.limitInput} />
-            <FootMeterRow kind="out" used={plan.meter.usedOutput} limit={plan.meter.limitOutput} />
-          </span>
-        )}
-        {(showPeak || showUpdated) && (
-          <span className={styles.footFoot} data-dsh-part="foot-card-foot">
-            {showPeak && <PeakBadge peak={period.peak} boundaryMs={period.boundaryMs} variant="compact" />}
-            {showPeak && (
-              <span className={styles.footPeakClock}>
-                {t(period.peak ? 'usage.peak.ends' : 'usage.peak.starts', { time: formatClock(period.boundaryMs) })}
-              </span>
-            )}
-            {showUpdated && (
-              <span className={styles.footMeta} title={t('usage.updated', { time: formatClock(snapshot.updatedAt) })}>
-                {formatClock(snapshot.updatedAt)}
-              </span>
-            )}
-          </span>
-        )}
+        <FootRows snapshot={snapshot} values={footValues} />
       </button>
       {toggle}
     </div>

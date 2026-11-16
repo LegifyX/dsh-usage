@@ -31,6 +31,9 @@ export interface UsageSettings {
   hiddenBalances?: string
   /** Comma-separated provider ids hidden from the plans tab. */
   hiddenPlans?: string
+  /** Reader-chosen balance and plan order (comma-separated provider ids). */
+  balanceOrder?: string
+  planOrder?: string
 }
 
 /** The display currencies the spend figures offer. */
@@ -55,6 +58,8 @@ export interface UsageSettingsCardState extends CardShell {
   footCompact: FieldState
   hiddenBalances: FieldState
   hiddenPlans: FieldState
+  balanceOrder: FieldState
+  planOrder: FieldState
 }
 
 /** The card's snapshot and its form actions, as the section receives them. */
@@ -84,6 +89,8 @@ export class UsageSettingsCardController {
       booleanField('footCompact'),
       textField('hiddenBalances', 'pick'),
       textField('hiddenPlans', 'pick'),
+      textField('balanceOrder', 'pick'),
+      textField('planOrder', 'pick'),
     ])
     this.store = this.form.bind(() => ({
       ...this.form.shell(),
@@ -101,6 +108,8 @@ export class UsageSettingsCardController {
       footCompact: this.form.field('footCompact'),
       hiddenBalances: this.form.field('hiddenBalances'),
       hiddenPlans: this.form.field('hiddenPlans'),
+      balanceOrder: this.form.field('balanceOrder'),
+      planOrder: this.form.field('planOrder'),
     }))
   }
 

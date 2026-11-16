@@ -66,6 +66,10 @@ export interface UsageConfigFields {
   hiddenBalances?: ConfigField<string>
   /** Comma-separated provider ids whose plan cards are hidden. */
   hiddenPlans?: ConfigField<string>
+  /** Reader-chosen balance order (comma-separated provider ids). */
+  balanceOrder?: ConfigField<string>
+  /** Reader-chosen plan order (comma-separated provider ids). */
+  planOrder?: ConfigField<string>
 }
 
 /**
@@ -106,6 +110,8 @@ export const Config = z.object({
   // everything", so a provider that appears later is visible automatically.
   hiddenBalances: z.string().default('').volatile(),
   hiddenPlans: z.string().default('').volatile(),
+  balanceOrder: z.string().default('').volatile(),
+  planOrder: z.string().default('').volatile(),
 })
 
 export interface ResolvedConfig extends UsageServiceOptions {
