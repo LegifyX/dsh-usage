@@ -175,24 +175,12 @@ function OrderRow(props: {
   )
 }
 
-/** Split a comma-separated hidden-provider list into a set. */
-function splitHidden(text: string): Set<string> {
-  return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
-}
-
 /**
- * The display rows under the statistics. Each control writes through the card
- * form: the currency pick at once, a typed number after a pause or on Enter.
- * The rate only matters while spend shows in dollars, so it appears then.
+ * Provider visibility and order for both the page cards and the sidebar. It
+ * lives on the Sidebar tab so the group does not repeat under every tab.
  */
-function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
-  const { card, face } = props
-  const fieldProps = {
-    overriddenLabel: t('settings.overridden'),
-    resetLabel: t('settings.reset'),
-    invalidLabel: t('settings.invalidNumber'),
-    disabled: !card.writable
-  }
+export function CardVisibilitySettings(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
+  const { card, face, providers } = props
   const hiddenBalances = splitHidden(card.hiddenBalances.text)
   const hiddenPlans = splitHidden(card.hiddenPlans.text)
   // Every configured provider that reports the fact gets a row, so a provider
@@ -225,6 +213,63 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
     face.edit(kind === 'balance' ? 'balanceOrder' : 'planOrder', ids.join(','))
   }
 
+  return (
+      <section className={styles.settingsGroup} aria-labelledby="settings-usage-cards-title" data-dsh-part="card-settings">
+        <h3 className={styles.groupTitle} id="settings-usage-cards-title">{t('usage.config.cardsTitle')}</h3>
+        <p className={styles.settingsGroupHint}>{t('usage.config.cardsHint')}</p>
+        {balanceRows.length === 0 && planRows.length === 0 && (
+          <span className={styles.muted}>{t('usage.config.cardsNone')}</span>
+        )}
+        {balanceRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.balancesTitle')}</span>}
+        {orderedBalances.map((provider, index) => (
+          <OrderRow
+            key={'balance-' + provider.provider}
+            label={provider.displayName}
+            checked={!hiddenBalances.has(provider.provider)}
+            disabled={!card.writable}
+            canUp={index > 0}
+            canDown={index < orderedBalances.length - 1}
+            onUp={() => { reorder('balance', index, -1) }}
+            onDown={() => { reorder('balance', index, 1) }}
+            onChange={(next) => { toggleHidden('hiddenBalances', provider.provider, next) }}
+          />
+        ))}
+        {planRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.plansTitle')}</span>}
+        {orderedPlans.map((provider, index) => (
+          <OrderRow
+            key={'plan-' + provider.provider}
+            label={planLabel(provider)}
+            checked={!hiddenPlans.has(provider.provider)}
+            disabled={!card.writable}
+            canUp={index > 0}
+            canDown={index < orderedPlans.length - 1}
+            onUp={() => { reorder('plan', index, -1) }}
+            onDown={() => { reorder('plan', index, 1) }}
+            onChange={(next) => { toggleHidden('hiddenPlans', provider.provider, next) }}
+          />
+        ))}
+      </section>
+  )
+}
+
+/** Split a comma-separated hidden-provider list into a set. */
+function splitHidden(text: string): Set<string> {
+  return new Set(text.split(',').map(entry => entry.trim()).filter(entry => entry !== ''))
+}
+
+/**
+ * The display rows under the statistics. Each control writes through the card
+ * form: the currency pick at once, a typed number after a pause or on Enter.
+ * The rate only matters while spend shows in dollars, so it appears then.
+ */
+function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettingsCardFace; providers: ProviderSnapshotView[] }): ReactNode {
+  const { card, face } = props
+  const fieldProps = {
+    overriddenLabel: t('settings.overridden'),
+    resetLabel: t('settings.reset'),
+    invalidLabel: t('settings.invalidNumber'),
+    disabled: !card.writable
+  }
   return (
     <section className={styles.settingsGroup} aria-labelledby="settings-usage-display-title" data-dsh-part="settings-rows">
       <h3 className={styles.groupTitle} id="settings-usage-display-title">{t('usage.config.title')}</h3>
@@ -265,41 +310,6 @@ function SettingsRows(props: { card: UsageSettingsCardState; face: UsageSettings
           />
         )
         : null}
-      <section className={styles.settingsGroup} aria-labelledby="settings-usage-cards-title" data-dsh-part="card-settings">
-        <h3 className={styles.groupTitle} id="settings-usage-cards-title">{t('usage.config.cardsTitle')}</h3>
-        <p className={styles.settingsGroupHint}>{t('usage.config.cardsHint')}</p>
-        {balanceRows.length === 0 && planRows.length === 0 && (
-          <span className={styles.muted}>{t('usage.config.cardsNone')}</span>
-        )}
-        {balanceRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.balancesTitle')}</span>}
-        {orderedBalances.map((provider, index) => (
-          <OrderRow
-            key={'balance-' + provider.provider}
-            label={provider.displayName}
-            checked={!hiddenBalances.has(provider.provider)}
-            disabled={!card.writable}
-            canUp={index > 0}
-            canDown={index < orderedBalances.length - 1}
-            onUp={() => { reorder('balance', index, -1) }}
-            onDown={() => { reorder('balance', index, 1) }}
-            onChange={(next) => { toggleHidden('hiddenBalances', provider.provider, next) }}
-          />
-        ))}
-        {planRows.length > 0 && <span className={styles.settingsSubhead}>{t('usage.config.plansTitle')}</span>}
-        {orderedPlans.map((provider, index) => (
-          <OrderRow
-            key={'plan-' + provider.provider}
-            label={planLabel(provider)}
-            checked={!hiddenPlans.has(provider.provider)}
-            disabled={!card.writable}
-            canUp={index > 0}
-            canDown={index < orderedPlans.length - 1}
-            onUp={() => { reorder('plan', index, -1) }}
-            onDown={() => { reorder('plan', index, 1) }}
-            onChange={(next) => { toggleHidden('hiddenPlans', provider.provider, next) }}
-          />
-        ))}
-      </section>
     </section>
   )
 }

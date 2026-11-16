@@ -127,6 +127,11 @@ Four changes, all visible in the Usage card and the sidebar glance card:
    (`balanceOrder`, `planOrder`), so the reader sets the order once and both the
    page cards and the sidebar follow it.
 
+10. **Cards live on the Sidebar tab.** The per-provider visibility and order
+    group moved out of the shared settings rows into the Sidebar tab, next to
+    the widget preview and its switches. Only the general rows (poll interval,
+    currency) stay visible under every tab.
+
 ## Install
 
 ```powershell
