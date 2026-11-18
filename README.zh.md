@@ -41,7 +41,8 @@
 4. **重启一次宿主进程。** DSH 在启动时解析客户端模块 id，新包名要到下次启动才会被
    提供；之后本插件的改动能正常热更新。
 
-插件无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用。
+插件无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用。**deeprelay
+套餐计量**（本分支最初的改动目的）开箱即用，详见下文。
 
 ## 功能
 
@@ -74,6 +75,24 @@
 API key 通过 harness 的凭据接缝（`llm-pi-ai` 记录、`apiKeyEnv` 引用）解析，永不
 下发到浏览器。
 
+### deeprelay 套餐
+
+本分支最初就是为 deeprelay 而做的，其固定套餐是核心支持项。名为 `deeprelay`、指向
+`https://api.deeprelay.ai` 的路由会用自身凭据读取
+`GET /v1/billing/subscription`，并显示：
+
+- **套餐名称与价格**（例如 `deeprelay · Base $0.99/mo`）；
+- **每月**与**滚动 7 天**的输入/输出计量条，按 deeprelay 自身的加权口径计算（计量条
+  反映套餐额度，而非本地重建的 token 数）；
+- 每月计量的**重置日期**。
+
+卡片显示在套餐页（可单独显隐并参与排序）；当 `footShowMeters` 开启时，也会作为
+侧边栏速览卡片中的计量块出现。
+
+显示条件：提供方路由 id 必须是 `deeprelay`（改了名字的路由无法读取计费端点），密钥
+需要 `billing:read` 权限，账户必须报告有效订阅（`subscribed: true`）且至少有一个正数
+token 限额。免费或过期套餐会刻意不显示，而不是画一根零值条。
+
 ## 提供方
 
 内置适配器按提供方路由 id 与 origin 匹配：
@@ -82,7 +101,7 @@ API key 通过 harness 的凭据接缝（`llm-pi-ai` 记录、`apiKeyEnv` 引用
 | --- | --- |
 | 余额 | DeepSeek 账户（CNY + USD）、Moonshot（国内/国际）、OpenRouter、SiliconFlow（国内/国际）、ZenMux、refuseless |
 | 套餐窗口 | Kimi For Coding、OpenCode Go、Codex / ChatGPT 订阅（OAuth 授权） |
-| 套餐配额 | deeprelay（`/v1/billing/subscription`：每月与滚动 7 天输入/输出） |
+| 套餐配额 | **deeprelay** 套餐：名称/价格、每月与滚动 7 天的加权输入/输出、重置日期（`/v1/billing/subscription`） |
 | 消费上限 | AMD Cloud（`/v1/usage`：每日美元上限）、numes（密钥限额） |
 
 **自动发现。** 没有手写适配器的已配置提供方，会针对其自身 base URL 探测一次已知

@@ -46,7 +46,8 @@ English | [中文](README.zh.md)
    edits hot-reload like any other plugin.
 
 No other configuration is needed: balances and plans come from the profile's
-`llm-pi-ai` routes and the credentials they name.
+`llm-pi-ai` routes and the credentials they name. **deeprelay plan meters** —
+the original reason for this fork — are supported out of the box; see below.
 
 ## What it does
 
@@ -86,6 +87,29 @@ Probing runs host-side on a poll cycle (default 60 s, plus **Refresh** and
 **Re-scan limits**). API keys resolve through the harness credential seam
 (`llm-pi-ai` records, `apiKeyEnv` references) and never reach the browser.
 
+### deeprelay plans
+
+This fork started as a deeprelay addition, and its flat-plan subscription is a
+first-class citizen. A route named `deeprelay` pointed at
+`https://api.deeprelay.ai` has its plan read from
+`GET /v1/billing/subscription` with that route's own credential, and shows:
+
+- the **plan name and price** (e.g. `deeprelay · Base $0.99/mo`);
+- the **monthly** and **rolling 7-day** input/output meters, drawn as weighted
+  tokens using deeprelay's own usage factors (so the bar reflects the plan's
+  allowance, not a locally reconstructed token count);
+- the **period reset** date for the monthly meter.
+
+The card renders on the Plans tab (with its own visibility switch and position
+in the ordering) and, when `footShowMeters` is on, as the meter block in the
+sidebar glance card.
+
+Requirements for the card to appear: the provider route id must be `deeprelay`
+(a differently named route cannot read the billing endpoint), its key needs the
+`billing:read` scope, and the account must report an entitled subscription
+(`subscribed: true`) with at least one positive token limit. A free or expired
+plan intentionally renders nothing rather than a zero bar.
+
 ## Providers
 
 Built-in adapters, matched by provider route id and origin:
@@ -94,7 +118,7 @@ Built-in adapters, matched by provider route id and origin:
 | --- | --- |
 | Balance | DeepSeek account (CNY + USD), Moonshot (CN/intl), OpenRouter, SiliconFlow (CN/intl), ZenMux, refuseless |
 | Plan windows | Kimi For Coding, OpenCode Go, Codex / ChatGPT subscription (OAuth grant) |
-| Plan quota | deeprelay (`/v1/billing/subscription`: monthly + rolling 7-day input/output) |
+| Plan quota | **deeprelay** plans: plan name/price, monthly + rolling 7-day weighted input/output, reset date (`/v1/billing/subscription`) |
 | Spend cap | AMD Cloud (`/v1/usage`: daily USD ceiling), numes (key limit) |
 
 **Discovery.** A configured provider with no hand-written adapter is probed once
