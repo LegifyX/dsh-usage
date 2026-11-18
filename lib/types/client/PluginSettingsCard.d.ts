@@ -111,7 +111,7 @@ export interface PluginSettingsCardProps<TKey extends string = string> {
  * @param props - the plugin's copy keys, its form state, and its controls.
  * @returns the card, or nothing while the namespace is still loading.
  */
-export declare function PluginSettingsCard<TKey extends string = string>(props: PluginSettingsCardProps<TKey>): import("react").JSX.Element | null;
+export declare function PluginSettingsCard<TKey extends string = string>(props: PluginSettingsCardProps<TKey>): any;
 /** Props every field control needs regardless of its value type. */
 export interface FieldProps {
     /** Stable id associating the label with its control. */
@@ -163,7 +163,7 @@ export declare function ValueField(props: FieldProps & {
         max: number;
         step: number;
     };
-}): import("react").JSX.Element;
+}): any;
 interface SelectOption {
     value: string;
     label: string;
@@ -184,7 +184,7 @@ export declare function SelectField(props: {
     disabled: boolean;
     invalid: boolean;
     onEdit: (text: string) => void;
-}): import("react").JSX.Element;
+}): any;
 /**
  * A visible segmented group for a small set of mutually exclusive values.
  * Every option stays on screen, so inherit/on/off and short enum fields take
@@ -200,7 +200,7 @@ export declare function SegmentField(props: {
     disabled: boolean;
     invalid: boolean;
     onEdit: (text: string) => void;
-}): import("react").JSX.Element;
+}): any;
 /** How a small single-choice field presents its options. */
 export type FieldPresentation = 'select' | 'segment';
 /** A boolean field: 继承 / 开 / 关. */
@@ -213,7 +213,7 @@ export declare function BooleanField(props: FieldProps & {
     offLabel: string;
     /** Defaults to the visible segments: the three answers always fit on one row. */
     presentation?: FieldPresentation;
-}): import("react").JSX.Element;
+}): any;
 /** An enumerated field, selecting or segmenting its small choice set. */
 export declare function ChoiceField(props: FieldProps & {
     /** Copy for the inherit option (draft text is the empty string). */
@@ -228,7 +228,7 @@ export declare function ChoiceField(props: FieldProps & {
      * select, which also suits a list whose length follows the deployment.
      */
     presentation?: FieldPresentation;
-}): import("react").JSX.Element;
+}): any;
 /**
  * A boolean toggle drawn as a switch track, for a setting that is only on or
  * off and applies on flip. It is a real button with
@@ -251,5 +251,5 @@ export declare function ToggleSwitch(props: {
     disabled?: boolean;
     /** Called with the requested next state. */
     onChange: (next: boolean) => void;
-}): import("react").JSX.Element;
+}): any;
 export {};

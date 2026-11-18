@@ -1,6 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { SettingsNamespace } from '@deepseek-ai/dsh-settings';
-import z from '@deepseek-ai/schemastery';
 import { type UsageServiceOptions } from './host/usage-service.ts';
 import { type SpendDisplay } from './core/spend.ts';
 declare module '@deepseek-ai/cordis' {
@@ -43,6 +42,27 @@ export interface UsageConfigFields {
     spendCurrency?: ConfigField<'CNY' | 'USD'>;
     /** CNY per USD, consulted only while the display currency is USD. */
     cnyPerUsd?: ConfigField<number>;
+    /** Sidebar glance card rows; every switch defaults to on. */
+    footShowSpend?: ConfigField<boolean>;
+    footShowUsage?: ConfigField<boolean>;
+    footShowBalances?: ConfigField<boolean>;
+    footShowMeters?: ConfigField<boolean>;
+    /** Which subscription window the sidebar meter block shows. */
+    footMeterWindow?: ConfigField<'week' | 'month'>;
+    footShowPeak?: ConfigField<boolean>;
+    footShowUpdated?: ConfigField<boolean>;
+    /** Tighter padding/gaps in the sidebar card. */
+    footCompact?: ConfigField<boolean>;
+    /** Comma-separated provider ids whose balance rows are hidden. */
+    hiddenBalances?: ConfigField<string>;
+    /** Comma-separated provider ids whose plan cards are hidden. */
+    hiddenPlans?: ConfigField<string>;
+    /** Reader-chosen balance order (comma-separated provider ids). */
+    balanceOrder?: ConfigField<string>;
+    /** Reader-chosen plan order (comma-separated provider ids). */
+    planOrder?: ConfigField<string>;
+    /** Per-provider spend currency (`provider:choice,...`). */
+    providerCurrency?: ConfigField<string>;
 }
 /**
  * Plugin config schema. Under the 0.1.7 settings model this schema IS the
@@ -58,19 +78,7 @@ export interface UsageConfigFields {
  * its accepted input stays the plain value, so the two sides no longer share
  * one shape and the annotation would reject the schema the Host must be given.
  */
-export declare const Config: z<Schemastery.ObjectS<NoInfer<{
-    enabled: z<boolean, boolean, "volatile-defined">;
-    pollIntervalSec: z<number, number, "volatile-defined">;
-    retainDays: z<number, number, "volatile-defined">;
-    spendCurrency: z<"CNY" | "USD", "CNY" | "USD", "volatile-defined">;
-    cnyPerUsd: z<number, number, "volatile-defined">;
-}>>, Schemastery.ObjectT<NoInfer<{
-    enabled: z<boolean, boolean, "volatile-defined">;
-    pollIntervalSec: z<number, number, "volatile-defined">;
-    retainDays: z<number, number, "volatile-defined">;
-    spendCurrency: z<"CNY" | "USD", "CNY" | "USD", "volatile-defined">;
-    cnyPerUsd: z<number, number, "volatile-defined">;
-}>>, "plain">;
+export declare const Config: any;
 export interface ResolvedConfig extends UsageServiceOptions {
     enabled: boolean;
     /** The resolved spend display; always present, unlike the optional service option. */

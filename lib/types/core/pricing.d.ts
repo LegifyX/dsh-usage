@@ -23,7 +23,7 @@
  * (`deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`) stay accepted and bill
  * at the flash row; DeepSeek routes `deepseek-v4-pro` to V4.1-Flash from the
  * retirement instant below until V4.1 Pro ships.
- * @module @linxin666/dsh-usage/core/pricing
+ * @module @legifyx/dsh-usage/core/pricing
  */
 import type { UsageTokenTotals } from './types.ts';
 /**
@@ -55,6 +55,16 @@ export declare function deepseekPeriodAt(ms: number, calendar?: PublicHolidayCal
     peak: boolean;
     boundaryMs: number;
 };
+/**
+ * Estimate one call's DeepSeek spend in USD from its token totals, using the
+ * USD price book and the same peak/off-peak clock as the CNY estimate.
+ * @param model - the route's model id.
+ * @param totals - the call's token totals.
+ * @param atMs - the call instant, which selects peak or off-peak.
+ * @param calendar - the public-holiday calendar the peak rule consults.
+ * @returns the estimated spend in USD, rounded to micro-USD.
+ */
+export declare function deepseekModelSpendUsd(model: string, totals: Readonly<UsageTokenTotals>, atMs: number, calendar?: PublicHolidayCalendar): number;
 /**
  * Estimate one call's DeepSeek spend in CNY from its token totals, priced in
  * the billing period at `atMs`. Uncatalogued model ids take the flash-class

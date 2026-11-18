@@ -1,12 +1,11 @@
 /**
  * The usage statistics settings page: one family settings card whose header
- * carries the plugin switch, whose body holds three tabs (用量: today's
- * usage, balances, trend; 个人套餐: per-provider plan quota windows; Token
- * 银行: the whale-yuan voucher minted from every provider's ledger usage)
- * and, under them, the display rows. Data comes from the host's
- * loopback-fenced /api/dsh-usage/overview document; polling runs only while
- * the section is mounted and the tab is visible.
- * @module @linxin666/dsh-usage/client/UsageSectionCard
+ * carries the plugin switch, whose body holds three tabs (Usage: today's
+ * usage, balances, provider limits and trend; Plans: per-provider plan quota
+ * windows; Sidebar: the glance card and its switches). Data comes from the
+ * host's loopback-fenced /api/dsh-usage/overview document; polling runs only
+ * while the section is mounted and the tab is visible.
+ * @module @legifyx/dsh-usage/client/UsageSectionCard
  */
 import { type ReactNode } from 'react';
 import type { UsageStoreInstance } from './usage-store.ts';
@@ -21,6 +20,8 @@ export interface UsageSectionFace {
     poll: () => void;
     /** Force a host probe cycle now (resolves with the fresh overview). */
     refresh: () => void;
+    /** Clear the discovery cache and re-probe adapter-less providers. */
+    rescan: () => void;
     /**
      * Fetch one retained local day (YYYY-MM-DD) from the host. The overview
      * only carries today plus the list of recorded days, so a day the user picks

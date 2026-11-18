@@ -11,7 +11,7 @@
  *
  * The container is a plain div carrying its own React root, so it can never
  * disturb the shell's reconciliation.
- * @module @linxin666/dsh-usage/client/foot-card-mount
+ * @module @legifyx/dsh-usage/client/foot-card-mount
  */
 import { type UsageFootCardProps } from './UsageFootCard.tsx';
 /** Stable data attribute identifying the injected card container. */

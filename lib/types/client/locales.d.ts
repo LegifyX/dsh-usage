@@ -1,7 +1,7 @@
 /**
  * dsh-usage locale dictionaries (zh/en). The zh dictionary is the key source;
  * `en` mirrors its full key set (packages/AGENTS.md bilingual discipline).
- * @module @linxin666/dsh-usage/client/locales
+ * @module @legifyx/dsh-usage/client/locales
  */
 /** Dictionary namespace this package registers. */
 export declare const NS = "dsh-web-ui-usage";
@@ -10,9 +10,12 @@ export declare const zh: {
     'usage.title': string;
     'usage.tab.usage': string;
     'usage.tab.plans': string;
-    'usage.tab.bank': string;
+    'usage.tab.sidebar': string;
+    'usage.sidebar.preview': string;
     'usage.refresh': string;
     'usage.refreshing': string;
+    'usage.rescan': string;
+    'usage.rescanning': string;
     'usage.updated': string;
     'usage.loading': string;
     'usage.error': string;
@@ -52,23 +55,23 @@ export declare const zh: {
     'usage.plan.windows.5h': string;
     'usage.plan.windows.week': string;
     'usage.plan.windows.month': string;
+    'usage.quota.month': string;
+    'usage.quota.week': string;
+    'usage.quota.in': string;
+    'usage.quota.out': string;
+    'usage.quota.rolling': string;
+    'usage.quota.hint': string;
+    'usage.spend.title': string;
+    'usage.spend.daily': string;
+    'usage.spend.monthly': string;
+    'usage.spend.key': string;
+    'usage.spend.unlimited': string;
     'usage.provider.error': string;
     'usage.errorListSeparator': string;
     'usage.config.title': string;
     'usage.config.pollIntervalSec': string;
     'usage.config.spendCurrency': string;
     'usage.config.cnyPerUsd': string;
-    'usage.bank.title': string;
-    'usage.bank.hint': string;
-    'usage.bank.noUsage': string;
-    'usage.bank.minted': string;
-    'usage.bank.spend.observed': string;
-    'usage.bank.spend.estimated': string;
-    'usage.bank.window': string;
-    'usage.bank.windowAll': string;
-    'usage.bank.save': string;
-    'usage.bank.share': string;
-    'usage.bank.drawError': string;
     'usage.foot.cost': string;
     'usage.foot.noData': string;
     'usage.foot.open': string;
@@ -78,6 +81,29 @@ export declare const zh: {
     'usage.config.pollIntervalHint': string;
     'usage.config.spendCurrencyHint': string;
     'usage.config.cnyPerUsdHint': string;
+    'usage.config.footTitle': string;
+    'usage.config.footHint': string;
+    'usage.config.footShowSpend': string;
+    'usage.config.footShowUsage': string;
+    'usage.config.footShowBalances': string;
+    'usage.config.footShowMeters': string;
+    'usage.config.footMeterWindow': string;
+    'usage.config.footShowPeak': string;
+    'usage.config.footShowUpdated': string;
+    'usage.config.footCompact': string;
+    'usage.config.cardsTitle': string;
+    'usage.config.cardsHint': string;
+    'usage.config.balancesTitle': string;
+    'usage.config.plansTitle': string;
+    'usage.config.cardsNone': string;
+    'usage.config.moveUp': string;
+    'usage.config.moveDown': string;
+    'usage.balance.hidden': string;
+    'usage.config.providerCurrencies': string;
+    'usage.config.providerCurrenciesHint': string;
+    'usage.currency.native': string;
+    'usage.currency.both': string;
+    'usage.config.currencyTitle': string;
     'settings.collapse': string;
     'settings.expand': string;
     'settings.notExposed': string;

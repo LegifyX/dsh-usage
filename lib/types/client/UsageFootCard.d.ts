@@ -20,11 +20,12 @@
  * foot is permanently mounted. The card disappears while the plugin is
  * disabled (settings flag) or while the host serves no usage routes (a 404
  * means the host half is off), matching the section's own gating.
- * @module @linxin666/dsh-usage/client/UsageFootCard
+ * @module @legifyx/dsh-usage/client/UsageFootCard
  */
 import { type ReactNode } from 'react';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import { type UsageSettings } from './UsageSectionCard.tsx';
+import type { UsageOverviewView } from '../core/types.ts';
 import type { UsageStoreInstance } from './usage-store.ts';
 /** Props the mount forwards into the React tree. */
 export interface UsageFootCardProps {
@@ -47,6 +48,30 @@ export declare const FOOT_CARD_POLL_MS = 30000;
 export declare const FOOT_CARD_COLLAPSED_KEY = "dsh-usage.foot-card.collapsed";
 /** Read the persisted collapsed flag (absent = expanded). */
 export declare function readFootCardCollapsed(): boolean;
+/** The plain settings values the preview reads (the card state's text form). */
+export interface FootCardValues {
+    footShowSpend?: boolean;
+    footShowUsage?: boolean;
+    footShowBalances?: boolean;
+    footShowMeters?: boolean;
+    footMeterWindow?: 'week' | 'month';
+    footShowPeak?: boolean;
+    footShowUpdated?: boolean;
+    footCompact?: boolean;
+    hiddenBalances?: string;
+    hiddenPlans?: string;
+    balanceOrder?: string;
+    planOrder?: string;
+}
+/**
+ * A non-interactive copy of the sidebar card, rendered by the Sidebar tab so
+ * the reader sees the exact rows the switches control. It never polls or
+ * toggles its own collapse.
+ */
+export declare function UsageFootPreview(props: {
+    snapshot: UsageOverviewView;
+    values: FootCardValues;
+}): ReactNode;
 /**
  * Render the foot card content for the current store snapshot.
  * @param props - store, poller, settings form and open callback from the mount.

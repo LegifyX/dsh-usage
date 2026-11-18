@@ -5,9 +5,9 @@
  * the service stays transport-only and every endpoint detail lives here.
  *
  * All probes run host-side (Node fetch); API keys never reach the browser.
- * @module @linxin666/dsh-usage/core/adapters
+ * @module @legifyx/dsh-usage/core/adapters
  */
-import type { PlanWindowView } from './types.ts';
+import type { PlanWindowView, QuotaMeterView, SpendLimitView } from './types.ts';
 /** One HTTP probe the service executes verbatim. */
 export interface ProbeSpec {
     url: string;
@@ -38,13 +38,22 @@ export interface PlanParse {
     planName?: string;
     windows: PlanWindowView[];
 }
+/** A parsed subscription-quota fact (input/output meters over one window). */
+export interface QuotaParse {
+    planName?: string;
+    price?: string;
+    meters: QuotaMeterView[];
+}
+/** A parsed spend-cap fact (money spent against a provider's own ceiling). */
+export interface SpendParse extends SpendLimitView {
+}
 /** One provider family's probing capability. */
 export interface ProviderAdapter {
     /** Provider route keys this adapter serves. */
     ids: readonly string[];
     /**
      * Route keys that belong to this family for accounting (token folding, the
-     * spend price book, the whale-yuan bank) but must never be probed with this
+     * spend price book) but must never be probed with this
      * adapter's endpoints.
      *
      * A route reaches the DeepSeek family without an API key when the user is
@@ -78,6 +87,28 @@ export interface ProviderAdapter {
         build(context: AdapterProbeContext): ProbeSpec;
         parse(status: number, body: unknown): PlanParse | undefined;
     };
+    /**
+     * Input/output subscription meters (deeprelay). Separate from `plan` because
+     * the two dimensions carry their own used/limit counters rather than one
+     * percentage. `origin` gates the probe the same way the balance half does,
+     * so a reseller route that merely shares the id is never read.
+     */
+    quota?: {
+        origin?: string;
+        build(context: AdapterProbeContext): ProbeSpec;
+        parse(status: number, body: unknown): QuotaParse | undefined;
+    };
+    /**
+     * Money spent against a cap the provider itself enforces (a daily cost
+     * ceiling, a relay key's USD limit). Separate from balance (what is left to
+     * spend) and from quota (token meters): a spend cap can exist with no
+     * wallet, and the window is the provider's own.
+     */
+    spend?: {
+        origin?: string;
+        build(context: AdapterProbeContext): ProbeSpec;
+        parse(status: number, body: unknown): SpendParse | undefined;
+    };
 }
 /**
  * The official pay-as-you-go balance. `deepseek` is the configurable-catalog
@@ -87,6 +118,20 @@ export interface ProviderAdapter {
  */
 /** The official DeepSeek API origin: the only account its balance endpoint reports. */
 export declare const DEEPSEEK_API_ORIGIN = "https://api.deepseek.com";
+/**
+ * deeprelay flat-plan subscription: four weighted-token meters (monthly input,
+ * monthly output, rolling 7-day input, rolling 7-day output) plus a dollar
+ * usage backstop. `/v1/billing/subscription` is the server's own gate, so the
+ * card shows exactly what the provider enforces rather than a reconstructed
+ * local count; the local ledger cannot reproduce the per-model usage factors
+ * (a glm-5.3 token spends 12 of the allowance).
+ *
+ * The response is only meaningful when it is an entitled subscription whose
+ * meter was readable: `subscribed` is the entitlement flag (NOT `status`,
+ * which follows Stripe's vocabulary) and a null `usage` means "unknown", not
+ * "nothing used".
+ */
+export declare const DEEPRELAY_API_ORIGIN = "https://api.deeprelay.ai";
 /**
  * The adapter registry, in no particular order. Route keys come from the
  * pi-ai provider catalog plus the routes this deployment observed in user
@@ -117,14 +162,33 @@ export declare function originOf(baseURL: string | undefined): string | undefine
  */
 export declare function balanceAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean;
 /**
+ * Whether a spend-cap endpoint reports THIS route's account. Same origin gate
+ * as the balance and quota halves.
+ *
+ * @param adapter - the matched adapter.
+ * @param baseURL - the route's configured base URL (pi-ai profile), if any.
+ * @returns true when the adapter may probe its spend endpoint for the route.
+ */
+export declare function spendAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean;
+/**
+ * Whether a subscription-quota endpoint reports THIS route's account. Same
+ * origin gate as {@link balanceAppliesToRoute}, for the quota half: a route key
+ * that merely shares `deeprelay` but points at another host is another account.
+ *
+ * @param adapter - the matched adapter.
+ * @param baseURL - the route's configured base URL (pi-ai profile), if any.
+ * @returns true when the adapter may probe its quota endpoint for the route.
+ */
+export declare function quotaAppliesToRoute(adapter: ProviderAdapter, baseURL: string | undefined): boolean;
+/**
  * Whether a provider route belongs to the official DeepSeek family: the only
  * family with a spend price book and a settings-section-owned env credential
  * (llm-deepseek) rather than a pi-ai profile. Drives the fold-time cost
- * stamping, the client fold-time spend estimate, and the whale-yuan bank.
+ * stamping and the client fold-time spend estimate.
  *
  * Family membership is wider than the probe directory. The account route
  * (deepseek-account) bills the same account but authenticates with the account
- * token, so it prices and mints while `adapterFor()` still returns undefined
+ * token, so it prices spend while `adapterFor()` still returns undefined
  * for it and no probe or env-credential fallback can reach it. Every caller of
  * this predicate is an accounting decision; the credential and probing
  * decisions read `adapterFor()` instead, so the two never widen together

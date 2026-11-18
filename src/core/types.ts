@@ -270,12 +270,6 @@ export interface UsageOverviewView {
      * bar-chart data. Optional so an older host document still renders.
      */
     range?: UsageWindowSummary
-    /**
-     * The whole retained ledger (up to `retainDays`, today included)
-     * aggregated per provider — the voucher's minted total. Optional for the
-     * same older-host tolerance as `range`.
-     */
-    all?: UsageWindowSummary
   }
 }
 

@@ -57,9 +57,6 @@ export const FOOT_CARD_POLL_MS = 30_000
 /** localStorage key holding the collapsed flag ('1' = collapsed strip). */
 export const FOOT_CARD_COLLAPSED_KEY = 'dsh-usage.foot-card.collapsed'
 
-/** At most this many provider balances render before a +N overflow marker. */
-const BALANCE_CAP = 2
-
 /** Read the persisted collapsed flag (absent = expanded). */
 export function readFootCardCollapsed(): boolean {
   try {

@@ -359,7 +359,6 @@ export class UsageService {
     const allKeys = ledgerDayKeys(this.ledger)
     const days = allKeys.slice(-TREND_DAYS)
     const range = summarizeDays(days.map((key) => this.ledger.days[key] ?? {}))
-    const all = summarizeDays(allKeys.map((key) => this.ledger.days[key] ?? {}))
     return {
       updatedAt: Date.now(),
       // Display only: costs stay stored in CNY (issue #1937).
@@ -381,12 +380,6 @@ export class UsageService {
         // Every retained day, not just the trend window: the day picker's
         // option list reaches back to the oldest day retention still keeps.
         availableDays: allKeys,
-        all: {
-          from: allKeys[0] ?? todayKey,
-          to: allKeys[allKeys.length - 1] ?? todayKey,
-          totals: all.totals,
-          providers: all.providers,
-        },
       },
     }
   }

@@ -4,7 +4,7 @@
  * window bills double and green while off-peak bills half. The word always
  * rides with the colour (colour alone is not a signal), and the priced
  * sentence moves to the title so a tight surface stays one short token.
- * @module @linxin666/dsh-usage/client/PeakBadge
+ * @module @legifyx/dsh-usage/client/PeakBadge
  */
 import type { ReactNode } from 'react';
 /** Props: where the clock stands and how much copy the surface can hold. */

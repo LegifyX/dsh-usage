@@ -62,3 +62,15 @@ export declare function isLoopbackRequest(request: IncomingMessage): boolean;
  * @returns true when a forwarding header, a loopback socket, and a loopback Host all hold.
  */
 export declare function isForwardedLoopbackRequest(request: IncomingMessage): boolean;
+/**
+ * Local-fork addition (not in upstream): trust a request whose Host header is
+ * this machine's own non-internal IPv4 address, with the same browser
+ * same-origin markers the loopback fence uses. This is what makes the usage
+ * page work over a LAN address (dsh-web-lan-access) without pairing: the
+ * request still landed on this host, and a cross-site browser request is
+ * refused. A forwarded request never qualifies, so a proxy/tunnel in front of
+ * the host cannot use this path.
+ * @param request - node HTTP request.
+ * @returns true when the Host names one of this machine's LAN addresses and the origin matches.
+ */
+export declare function isTrustedLanRequest(request: IncomingMessage): boolean;

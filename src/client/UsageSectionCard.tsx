@@ -8,7 +8,7 @@
  * @module @legifyx/dsh-usage/client/UsageSectionCard
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { UsageStoreInstance } from './usage-store.ts'
 import { t } from './locales.ts'
 import styles from './usage.module.css'
@@ -22,7 +22,7 @@ import type { UsageSettingsCardFace } from './usage-settings-card.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
 import type { BalanceView, ProviderSnapshotView, QuotaMeterView, QuotaView, SpendLimitView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals } from '../core/types.ts'
-import { formatProviderSpend, formatSpend, parseProviderCurrencies, type SpendDisplay } from '../core/spend.ts'
+import { formatProviderSpend, formatSpend, parseProviderCurrencies } from '../core/spend.ts'
 
 export type { UsageSettings } from './usage-settings-card.ts'
 
@@ -577,16 +577,6 @@ function totalOf(totals: UsageTokenTotals): number {
   return totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens + totals.outputTokens
 }
 
-/**
- * The Token é“¶è¡Œ card: every provider's retained-ledger usage minted onto the
- * whale-yuan note at 1,000,000 tokens per whale yuan. The window is the whole
- * retained ledger by default (the host's aggregate, falling back to the 30-day
- * trend when an older host serves no `all`) or the single day the user picked;
- * the spend line prefers the official balance watch (whole window only) and
- * falls back to the fold-time estimate, which only the priced family feeds;
- * the artwork draw failure degrades to an error line and never takes the
- * section down.
- */
 /** Money text for a spend cap: a symbol for USD/CNY, else the ISO code. */
 function spendMoney(value: number, currency: string): string {
   const code = currency.toUpperCase()

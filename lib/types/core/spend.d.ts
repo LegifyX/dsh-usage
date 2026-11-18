@@ -3,7 +3,7 @@
  * billing currency (CNY), and that stored value never moves. This module turns
  * one CNY figure into the currency the user chose to READ it in, so switching
  * the display is a rendering decision, not a data migration (issue #1937).
- * @module @linxin666/dsh-usage/core/spend
+ * @module @legifyx/dsh-usage/core/spend
  */
 /** A currency the spend display can render. */
 export type SpendCurrency = 'CNY' | 'USD';
@@ -44,3 +44,23 @@ export declare function resolveSpendDisplay(input?: {
  * @returns the formatted amount with its currency symbol.
  */
 export declare function formatSpend(costCny: number, display?: SpendDisplay): string;
+/** How one provider's spend should read. */
+export type ProviderCurrency = 'native' | 'CNY' | 'USD' | 'both';
+/**
+ * Parse the per-provider currency list (`provider:choice,...`).
+ * Unknown choices are ignored; a provider absent from the map reads native.
+ * @param text - the stored list.
+ * @returns the choice for each named provider.
+ */
+export declare function parseProviderCurrencies(text: string): Map<string, ProviderCurrency>;
+/**
+ * Format one provider's spend in the currency the reader picked.
+ * USD prefers the stored USD-book estimate; a row recorded before that book
+ * existed falls back to converting the CNY estimate at the display rate.
+ * @param costCny - the provider's CNY estimate.
+ * @param costUsd - the provider's USD-book estimate (0 when unavailable).
+ * @param choice - the provider's configured currency.
+ * @param display - the display rate used for the USD fallback.
+ * @returns the formatted amount.
+ */
+export declare function formatProviderSpend(costCny: number, costUsd: number, choice: ProviderCurrency, display?: SpendDisplay): string;

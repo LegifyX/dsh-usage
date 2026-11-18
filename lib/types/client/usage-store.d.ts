@@ -2,7 +2,7 @@
  * Browser-side usage store: the overview snapshot polled from the host plus
  * the fetch lifecycle. Section-local: the store lives while the settings
  * section is mounted, so polling only runs while the page is open.
- * @module @linxin666/dsh-usage/client/usage-store
+ * @module @legifyx/dsh-usage/client/usage-store
  */
 import type { EngineStoreHandle, EngineStoreInstance } from '@deepseek-ai/dsh-client-store';
 import type { UsageOverviewView } from '../core/types.ts';

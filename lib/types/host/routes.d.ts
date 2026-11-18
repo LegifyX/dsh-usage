@@ -31,4 +31,12 @@ export declare function makeUsageDayRoute(ctx: Context, service: UsageService): 
  * @param service - the usage service.
  * @returns the route.
  */
+/**
+ * Manual rescan: clears the discovery cache and re-probes adapter-less
+ * providers, then answers with the fresh overview. Same trust fence.
+ * @param ctx - host context; may expose remoteWebUiPairing.
+ * @param service - the usage service.
+ * @returns the route.
+ */
+export declare function makeUsageRescanRoute(ctx: Context, service: UsageService): WebRoute;
 export declare function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebRoute;

@@ -3,7 +3,7 @@
  * routes, and the browser section. Everything here crosses the wire as JSON
  * and must stay provider-agnostic: provider quirks are normalized inside the
  * core adapters, never here.
- * @module @linxin666/dsh-usage/core/types
+ * @module @legifyx/dsh-usage/core/types
  */
 import type { SpendDisplay } from './spend.ts';
 /** One disjoint token bucket total, aggregated over calls (billed input = input + cacheRead + cacheWrite). */
@@ -27,6 +27,12 @@ export interface UsageTokenTotals {
      * buckets recorded before a price-book change keep the old pricing.
      */
     cost: number;
+    /**
+     * The same estimate priced from DeepSeek's USD book, for readers who show
+     * spend in dollars. 0 when the provider is unpriced or the row predates the
+     * USD book; a display falls back to converting `cost`.
+     */
+    costUsd: number;
 }
 /** A zeroed totals bucket. */
 export declare function emptyTotals(): UsageTokenTotals;
@@ -98,6 +104,54 @@ export interface PlanView {
     windows: PlanWindowView[];
     updatedAt: number;
 }
+/**
+ * One window of a provider subscription that meters INPUT and OUTPUT
+ * separately (deeprelay's Base/Plus plans). PlanView's percent-per-window
+ * shape cannot carry this: the two caps share a window but not a
+ * denominator, so each dimension keeps its own used/limit pair.
+ */
+export interface QuotaMeterView {
+    /** Stable window key the UI localizes (`month`, `week`, provider strings otherwise). */
+    key: string;
+    /** Provider-supplied window name, when it sends one. */
+    name?: string;
+    /** Weighted input tokens spent this window. */
+    usedInput: number;
+    /** Weighted input cap for this window; 0 means uncapped. */
+    limitInput: number;
+    /** Weighted output tokens spent this window. */
+    usedOutput: number;
+    /** Weighted output cap for this window; 0 means uncapped. */
+    limitOutput: number;
+    /** ISO 8601 reset instant; absent for a rolling window. */
+    resetsAt?: string;
+}
+/** A subscription-metering quota fact normalized from a provider probe. */
+export interface QuotaView {
+    /** Plan tier name, when the provider reports one. */
+    planName?: string;
+    /** Plan price formatted for display, when the provider reports one. */
+    price?: string;
+    meters: QuotaMeterView[];
+    updatedAt: number;
+}
+/**
+ * A provider's spend cap over one billing window, when it meters money rather
+ * than tokens (AMD Cloud's daily cost ceiling, a relay key's USD limit).
+ * `limit` 0 means the provider reported no cap.
+ */
+export interface SpendLimitView {
+    /** ISO 4217 code the provider meters in. */
+    currency: string;
+    /** Amount spent in this window. */
+    used: number;
+    /** Cap for this window; 0 means unlimited/uncapped. */
+    limit: number;
+    /** Window key the UI localizes (`daily`, `monthly`, `key`, provider strings otherwise). */
+    window: string;
+    /** ISO 8601 reset instant, when the provider reports one. */
+    resetsAt?: string;
+}
 /** How the credential backing one provider route was resolved. */
 export type CredentialKind = 'api-key' | 'env' | 'oauth' | 'none';
 /** One aggregated usage window (the 30-day trend, or the whole retained ledger). */
@@ -106,13 +160,6 @@ export interface UsageWindowSummary {
     to: string;
     totals: UsageTokenTotals;
     providers: UsageProviderSummary[];
-}
-/** Real spend observed from an official balance series rather than priced locally. */
-export interface ObservedSpendView {
-    /** Accrued spend in the account currency (CNY for the DeepSeek official watch). */
-    cny: number;
-    /** Epoch ms of the first balance observation the accrual starts at. */
-    since: number;
 }
 /** One provider row of the overview snapshot. */
 export interface ProviderSnapshotView {
@@ -127,10 +174,24 @@ export interface ProviderSnapshotView {
     balanceSupported?: boolean;
     /** A coding-plan adapter exists for this route — the Plans tab lists these only. */
     planSupported?: boolean;
+    /** A subscription-quota adapter (input/output meters) exists for this route. */
+    quotaSupported?: boolean;
+    /** A spend-cap adapter (money over a window) exists for this route. */
+    spendSupported?: boolean;
     balance?: BalanceView;
-    /** Every currency the route's account reports, CNY and USD first. */
+    /**
+     * Every currency the route's account reports, CNY and USD first.
+     *
+     * A signed-in DeepSeek account holds one wallet per currency and the two are
+     * not summable, so the single `balance` field cannot carry the whole answer;
+     * older documents and API-key routes keep just `balance`.
+     */
     balances?: BalanceView[];
     plan?: PlanView;
+    /** Input/output subscription meters (deeprelay plans). */
+    quota?: QuotaView;
+    /** Money spent against a provider's own cap (AMD Cloud daily cost, relay keys). */
+    spend?: SpendLimitView;
     /** Last probe failure, cleared on the next success. */
     error?: string;
     updatedAt?: number;
@@ -181,19 +242,6 @@ export interface UsageOverviewView {
          * bar-chart data. Optional so an older host document still renders.
          */
         range?: UsageWindowSummary;
-        /**
-         * The whole retained ledger (up to `retainDays`, today included)
-         * aggregated per provider — the voucher's minted total. Optional for the
-         * same older-host tolerance as `range`.
-         */
-        all?: UsageWindowSummary;
-        /**
-         * Real CNY spend of the official DeepSeek family, accrued from observed
-         * decreases of the official balance (top-ups never count). Present once
-         * a decrease has been observed; until then the section falls back to the
-         * fold-time estimate.
-         */
-        observedSpend?: ObservedSpendView;
     };
 }
 /**
@@ -207,4 +255,8 @@ export interface ProviderSnapshotState extends ProviderSnapshotView {
     balanceError?: string;
     /** Last plan-probe failure; cleared on the next plan success. */
     planError?: string;
+    /** Last quota-probe failure; cleared on the next quota success. */
+    quotaError?: string;
+    /** Last spend-probe failure; cleared on the next spend success. */
+    spendError?: string;
 }

@@ -5,7 +5,7 @@
  * is open; the foot card runs its own relaxed loop because the sidebar foot
  * is permanently mounted. All provider probing and credential handling
  * happens in the host half; this bundle only renders the overview document.
- * @module @linxin666/dsh-usage/client
+ * @module @legifyx/dsh-usage/client
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';

@@ -4,26 +4,11 @@
  * a poll cycle, and serves the current provider's strip-ready view inside
  * the overview document. Secrets stay in the host process; the browser only
  * ever sees the overview document.
- * @module @linxin666/dsh-usage/host/usage-service
+ * @module @legifyx/dsh-usage/host/usage-service
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { UsageDayView, UsageOverviewView } from '../core/types.ts';
 import { type SpendDisplay } from '../core/spend.ts';
-/**
- * Persisted accrual state for the official DeepSeek family's real spend:
- * consecutive observations of the official CNY balance, decreases counted
- * as spent (a rise is a top-up and never accrues). `since` is the first
- * observation; the ledger keeps no such fact, so this watch is the only
- * source of the voucher's observed-spend figure.
- */
-export interface SpendWatch {
-    /** Total observed decrease since `since`, in CNY. */
-    accruedCny: number;
-    /** Epoch ms of the first balance observation. */
-    since: number;
-    /** The balance the previous observation ended on, when one exists. */
-    lastBalanceCny?: number;
-}
 /** Poll-loop options; re-applied live on settings change. */
 export interface UsageServiceOptions {
     pollIntervalSec: number;
@@ -35,16 +20,21 @@ export interface UsageServiceOptions {
      */
     display?: SpendDisplay;
 }
+/**
+ * @param ctx - host context.
+ * @param options - resolved poll/retention settings.
+ */
 export declare class UsageService {
     private readonly ctx;
     private options;
     private readonly persistDir;
     private readonly ledgerPath;
     private readonly snapshotsPath;
+    private readonly probesPath;
     private ledger;
     private readonly snapshots;
-    /** The official DeepSeek family's real-spend watch (see SpendWatch). */
-    private spendWatch;
+    /** Discovery cache for routes with no hand-written adapter. */
+    private probes;
     /** Per-live-session route attribution (WeakMap: disposed sessions age out). */
     private readonly sessionRoutes;
     /** The most recent route seen this boot; the sidebar strip and the header highlight follow it. */
@@ -103,15 +93,6 @@ export declare class UsageService {
      */
     private familyUsageToday;
     /**
-     * Accrue the official DeepSeek family's real spend from observed CNY
-     * balance decreases; a balance rise is a top-up and never counts. The
-     * family's route ids can alias one account, so the watch follows the
-     * largest balance seen this cycle and accrues only decreases of that
-     * series — a failed probe keeps the stale balance and accrues nothing
-     * until the next success reports the whole drop at once.
-     */
-    private accrueDeepSeekSpend;
-    /**
      * The display name for a route key: the LLM runtime's first, then the
      * adapter's, then the id itself — the snapshot may not exist for
      * adapter-less routes, yet the sidebar strip still needs a legible title.
@@ -142,11 +123,42 @@ export declare class UsageService {
     private persistSnapshots;
     private rearmPoll;
     /**
+     * The adapter serving one route: the hand-written registry first, then a
+     * discovered endpoint from the probe cache. Discovery results are only used
+     * after a successful parse, so an arbitrary provider never gets a guessed
+     * fact.
+     */
+    private adapterForRoute;
+    /**
+     * Adapter for a route, discovering one on first sight. A provider whose
+     * discovery failed is retried only after a week; the manual rescan clears
+     * the cache. Routes without a credential or a usable base URL are skipped.
+     */
+    private ensureAdapter;
+    /** Rewrite the probe cache after a discovery or a rescan. */
+    private persistProbes;
+    /**
+     * Clear every discovery result and re-scan on the next poll. Snapshots of
+     * discovered routes are dropped too, so a shape that no longer matches does
+     * not keep presenting stale facts.
+     */
+    rescan(): Promise<void>;
+    /**
      * One poll cycle: enumerate routes, resolve credentials, probe.
      * A call while a cycle is already running joins that cycle instead of
      * returning immediately, so a manual refresh always waits for real probes.
      */
     pollNow(): Promise<void>;
+    /**
+     * Read the signed-in DeepSeek account's wallet balance.
+     *
+     * `deepseek-account` is a familyOnly route: the API-key balance endpoint may
+     * report a different account, so probing it there would mis-attribute money
+     * (issue #1772). The harness account service is the only source that sees
+     * this account. A signed-out or failed read leaves the previous snapshot in
+     * place rather than blanking the row.
+     */
+    private probeAccountBalance;
     /**
      * Every route the service probes and renders: the runtime's live providers
      * plus the configurable directory's catalog entries, then alias-folded so a
