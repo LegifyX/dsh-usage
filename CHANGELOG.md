@@ -28,9 +28,9 @@ Usage / Plans / Sidebar.
 
 ### Added
 
-- **deeprelay plan meters** (the fork's original feature): plan name and
-  price, monthly and rolling 7-day weighted input/output meters, and the reset
-  date, read from `/v1/billing/subscription` with the route's own credential.
+- **deeprelay plan meters**: plan name and price, monthly and rolling 7-day
+  weighted input/output meters, and the reset date, read from
+  `/v1/billing/subscription` with the route's own credential.
 - **Per-provider spend currency**: Native / CNY / USD / Both per provider,
   with a separate USD price book (`costUsd`) instead of dividing CNY.
 - **Usage-endpoint discovery** for providers without a hand-written adapter:

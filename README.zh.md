@@ -41,8 +41,7 @@
 4. **重启一次宿主进程。** DSH 在启动时解析客户端模块 id，新包名要到下次启动才会被
    提供；之后本插件的改动能正常热更新。
 
-插件无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用。**deeprelay
-套餐计量**（本分支最初的改动目的）开箱即用，详见下文。
+插件无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用。
 
 ## 功能
 
@@ -75,23 +74,22 @@
 API key 通过 harness 的凭据接缝（`llm-pi-ai` 记录、`apiKeyEnv` 引用）解析，永不
 下发到浏览器。
 
-### deeprelay 套餐
+### 支持的套餐
 
-本分支最初就是为 deeprelay 而做的，其固定套餐是核心支持项。名为 `deeprelay`、指向
-`https://api.deeprelay.ai` 的路由会用自身凭据读取
-`GET /v1/billing/subscription`，并显示：
+只有适配器已知端点形状的提供方才会被探测，因此下面就是完整列表，其余保持不探测。
 
-- **套餐名称与价格**（例如 `deeprelay · Base $0.99/mo`）；
-- **每月**与**滚动 7 天**的输入/输出计量条，按 deeprelay 自身的加权口径计算（计量条
-  反映套餐额度，而非本地重建的 token 数）；
-- 每月计量的**重置日期**。
+| 套餐 | 端点 | 窗口 |
+| --- | --- | --- |
+| Codex / ChatGPT 订阅 | OAuth 授权，ChatGPT 后端 | 5 小时、周 |
+| deeprelay | `GET /v1/billing/subscription` | 月（加权输入/输出）、滚动 7 天（加权输入/输出）、重置日期 |
+| GLM Coding Plan（国内/国际） | `GET /api/monitor/usage/quota/limit`（open.bigmodel.cn 或 api.z.ai） | 5 小时、周、月 |
+| Kimi For Coding | `GET /coding/v1/usages`（api.kimi.com） | 5 小时、周 |
+| MiniMax Coding Plan（国内/国际） | `GET /v1/api/openplatform/coding_plan/remains` | 5 小时、周 |
+| OpenCode Go | `GET /zen/go/v1/usage`（opencode.ai） | 滚动、周、月 |
 
-卡片显示在套餐页（可单独显隐并参与排序）；当 `footShowMeters` 开启时，也会作为
-侧边栏速览卡片中的计量块出现。
-
-显示条件：提供方路由 id 必须是 `deeprelay`（改了名字的路由无法读取计费端点），密钥
-需要 `billing:read` 权限，账户必须报告有效订阅（`subscribed: true`）且至少有一个正数
-token 限额。免费或过期套餐会刻意不显示，而不是画一根零值条。
+套餐端点的形状与访问方式各不相同，我们也无法看到别人账户里的套餐数据。如需新增套餐，
+请提交 issue 或 PR，附上该提供方端点的示例响应（脱敏后）与路由 id：新增一个套餐只需
+一条适配器条目，但只能基于我们能够观察到的端点来实现。
 
 ## 提供方
 
@@ -100,8 +98,8 @@ token 限额。免费或过期套餐会刻意不显示，而不是画一根零�
 | 类型 | 提供方 |
 | --- | --- |
 | 余额 | DeepSeek 账户（CNY + USD）、Moonshot（国内/国际）、OpenRouter、SiliconFlow（国内/国际）、ZenMux、refuseless |
-| 套餐窗口 | Kimi For Coding、OpenCode Go、Codex / ChatGPT 订阅（OAuth 授权） |
-| 套餐配额 | **deeprelay** 套餐：名称/价格、每月与滚动 7 天的加权输入/输出、重置日期（`/v1/billing/subscription`） |
+| 套餐窗口 | Kimi For Coding、GLM Coding Plan（国内/国际）、MiniMax Coding Plan（国内/国际）、OpenCode Go、Codex / ChatGPT 订阅（OAuth 授权） |
+| 套餐配额 | deeprelay 套餐：名称/价格、每月与滚动 7 天的加权输入/输出、重置日期 |
 | 消费上限 | AMD Cloud（`/v1/usage`：每日美元上限）、numes（密钥限额） |
 
 **自动发现。** 没有手写适配器的已配置提供方，会针对其自身 base URL 探测一次已知
