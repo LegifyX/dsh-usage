@@ -2,7 +2,7 @@
  * Alias folding for the enumerated provider routes. Kept in core because the
  * rule is pure — the host enumerates routes and this decides which of two
  * routes serving one adapter family survives.
- * @module @linxin666/dsh-usage/core/provider-routes
+ * @module @legifyx/dsh-usage/core/provider-routes
  */
 
 import { adapterFor } from './adapters.ts'

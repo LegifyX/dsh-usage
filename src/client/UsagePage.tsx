@@ -1,7 +1,7 @@
 /**
  * The usage page's card chrome: the family settings card whose header holds
  * the plugin switch, and the display rows the body closes with.
- * @module @linxin666/dsh-usage/client/UsagePage
+ * @module @legifyx/dsh-usage/client/UsagePage
  */
 
 import type { ReactNode } from 'react'

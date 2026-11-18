@@ -16,7 +16,7 @@
  *   HTML app answering 200 on every path, like the local Open WebUI, is
  *   rejected);
  * - every probe has a short timeout, and discovery runs once per provider.
- * @module @linxin666/dsh-usage/core/discovery
+ * @module @legifyx/dsh-usage/core/discovery
  */
 
 import type { BalanceParse, SpendParse } from './adapters.ts'

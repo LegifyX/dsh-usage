@@ -20,7 +20,7 @@
  * foot is permanently mounted. The card disappears while the plugin is
  * disabled (settings flag) or while the host serves no usage routes (a 404
  * means the host half is off), matching the section's own gating.
- * @module @linxin666/dsh-usage/client/UsageFootCard
+ * @module @legifyx/dsh-usage/client/UsageFootCard
  */
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'

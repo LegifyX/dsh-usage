@@ -174,7 +174,7 @@ let pendingStop: Promise<unknown> | undefined
  * @param ctx - host root context.
  * @param config - the row's resolved configuration.
  */
-export const apply = mountOnce('@linxin666/dsh-usage', (ctx: Context, config?: UsageConfigFields): void => {
+export const apply = mountOnce('@legifyx/dsh-usage', (ctx: Context, config?: UsageConfigFields): void => {
   let live = true
   let service: UsageService | undefined
   let disposeRoutes: (() => void) | undefined

@@ -17,7 +17,7 @@
  * Coverage ends at the newest year below. A year with no entry is priced as
  * if it had no holidays, which is the documented default of
  * {@link PublicHolidayCalendar} in `pricing.ts`.
- * @module @linxin666/dsh-usage/core/holidays
+ * @module @legifyx/dsh-usage/core/holidays
  */
 
 /** Public-holiday dates keyed by Beijing calendar year. */

@@ -1,9 +1,12 @@
-# Fork bundle patch: re-point the existing usage row at this package.
+# Standalone usage plugin.
 #
-# The stock web bundle already inserts the row (`web-ui-usage`) that mounts this
-# package's host half (ledger, provider probes, /api/dsh-usage routes) and its
-# browser half (lib/client.js). Installing the fork therefore only needs the
-# profile's dependency entry to resolve `@linxin666/dsh-usage` to this copy;
-# inserting a second row here would mount the plugin twice.
-- id: web-ui-usage
-  name: '@linxin666/dsh-usage'
+# This patch inserts its own row (`dsh-usage`). If the dsh-web bundle is also
+# installed it already carries a usage row (`web-ui-usage`) for
+# `@linxin666/dsh-usage`; leave that one enabled and the page mounts twice.
+# Disable the bundled row first:
+#
+#   include:web-ui-usage  ->  enabled: false
+#
+- insert:
+    - id: dsh-usage
+      name: '@legifyx/dsh-usage'

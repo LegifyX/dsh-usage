@@ -3,7 +3,7 @@
  * billing currency (CNY), and that stored value never moves. This module turns
  * one CNY figure into the currency the user chose to READ it in, so switching
  * the display is a rendering decision, not a data migration (issue #1937).
- * @module @linxin666/dsh-usage/core/spend
+ * @module @legifyx/dsh-usage/core/spend
  */
 
 /** A currency the spend display can render. */

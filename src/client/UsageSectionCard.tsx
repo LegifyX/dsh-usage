@@ -1,12 +1,11 @@
 /**
  * The usage statistics settings page: one family settings card whose header
- * carries the plugin switch, whose body holds three tabs (ç”¨é‡: today's
- * usage, balances, trend; ä¸ªäººå¥—é¤: per-provider plan quota windows; Token
- * é“¶è¡Œ: the whale-yuan voucher minted from every provider's ledger usage)
- * and, under them, the display rows. Data comes from the host's
- * loopback-fenced /api/dsh-usage/overview document; polling runs only while
- * the section is mounted and the tab is visible.
- * @module @linxin666/dsh-usage/client/UsageSectionCard
+ * carries the plugin switch, whose body holds three tabs (Usage: today's
+ * usage, balances, provider limits and trend; Plans: per-provider plan quota
+ * windows; Sidebar: the glance card and its switches). Data comes from the
+ * host's loopback-fenced /api/dsh-usage/overview document; polling runs only
+ * while the section is mounted and the tab is visible.
+ * @module @legifyx/dsh-usage/client/UsageSectionCard
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
@@ -22,8 +21,7 @@ import { UsageFootPreview, type FootCardValues } from './UsageFootCard.tsx'
 import type { UsageSettingsCardFace } from './usage-settings-card.ts'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
-import { voucherData, drawVoucher, faceValue, formatDay, formatDenomination, loadVoucherArt } from './voucher.ts'
-import type { BalanceView, ObservedSpendView, ProviderSnapshotView, QuotaMeterView, QuotaView, SpendLimitView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
+import type { BalanceView, ProviderSnapshotView, QuotaMeterView, QuotaView, SpendLimitView, UsageDayView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals } from '../core/types.ts'
 import { formatProviderSpend, formatSpend, parseProviderCurrencies, type SpendDisplay } from '../core/spend.ts'
 
 export type { UsageSettings } from './usage-settings-card.ts'
@@ -55,12 +53,6 @@ export interface UsageSectionProps extends UsageSectionFace {
 
 /** Poll cadence while the section is open. */
 const SECTION_POLL_MS = 10_000
-
-/**
- * The Token bank's default window: the whole retained ledger. It is a select
- * value rather than a date, so it can never collide with a day key.
- */
-const BANK_ALL_DAYS = 'all'
 
 /** Compact token count: 12345 -> 12.3k, 1234567 -> 1.23M. */
 export function formatTokens(value: number): string {
@@ -218,10 +210,8 @@ function DayPicker(props: {
   value: string
   options: string[]
   today: string
-  /** An extra leading option; the Token bank passes its whole-ledger window. */
   leading?: { value: string; label: string }
   onSelect: (date: string) => void
-  /** Namespaces the element id, so the two tabs keep one control each. */
   part: string
 }): ReactNode {
   const { value, options, today, leading, onSelect, part } = props
@@ -252,11 +242,8 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   // starts and stops with the switch without waiting for an unrelated render.
   const card = useSyncExternalStore(settingsCard.store.subscribe, settingsCard.store.getSnapshot)
   const [tab, setTab] = useState<UsageTab>('usage')
-  // Undefined means "the default window of this tab": today on the usage tab,
-  // the whole retained ledger in the Token bank. A date switches that tab to
-  // one retained day instead.
+  // Undefined means "today"; a date switches the tab to that retained day.
   const [usageDay, setUsageDay] = useState<string | undefined>(undefined)
-  const [bankDay, setBankDay] = useState<string | undefined>(undefined)
   const [refreshing, setRefreshing] = useState(false)
   const [rescanning, setRescanning] = useState(false)
   const enabled = card.enabled.text !== 'false'
@@ -301,21 +288,11 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   // A selection retention no longer holds falls back to the tab's default
   // window, so a picker can never keep displaying a day the host dropped.
   const usageSelection = usageDay !== undefined && dayOptions.includes(usageDay) ? usageDay : undefined
-  const bankSelection = bankDay !== undefined && dayOptions.includes(bankDay) ? bankDay : undefined
   const selectedDay = usageSelection ?? todayDate
   const isToday = selectedDay === todayDate
   const usageDayLoad = useDayView(loadDay, usageSelection, todayDate)
-  const bankDayLoad = useDayView(loadDay, bankSelection, todayDate)
   // A selected day rides its own fetch; the default windows ride the overview.
   const day = isToday ? snapshot?.usage.today : usageDayLoad?.view
-  const bankDayView = bankSelection === undefined
-    ? undefined
-    : bankSelection === todayDate ? snapshot?.usage.today : bankDayLoad?.view
-  const bankWindow = bankSelection === undefined
-    ? snapshot?.usage.all ?? snapshot?.usage.range
-    : bankDayView === undefined
-      ? undefined
-      : { from: bankDayView.date, to: bankDayView.date, totals: bankDayView.totals, providers: bankDayView.providers }
 
   const onRescan = (): void => {
     setRescanning(true)
@@ -522,35 +499,13 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           </>
         )}
 
-        {tab === 'bank' && (
-          <>
-            <DayPicker
-              part="bank"
-              value={bankSelection ?? BANK_ALL_DAYS}
-              options={dayOptions}
-              today={todayDate ?? ''}
-              leading={{ value: BANK_ALL_DAYS, label: t('usage.bank.windowAll') }}
-              onSelect={(date) => { setBankDay(date === BANK_ALL_DAYS ? undefined : date) }}
-            />
-            <VoucherCard
-              window={bankWindow}
-              // The observed-spend watch accrues from its own first balance
-              // reading, so it describes the whole window only: a single day's
-              // voucher falls back to that day's fold-time estimate.
-              observedSpend={bankSelection === undefined ? snapshot.usage.observedSpend : undefined}
-              loading={bankSelection !== undefined && bankDayLoad?.status === 'loading'}
-              display={snapshot.display}
-              {...(bankDayLoad?.status === 'error' ? { error: bankDayLoad.error ?? '' } : {})}
-            />
-          </>
-        )}
       </div>
     </UsagePage>
   )
 }
 
 /** The statistics tabs, in their order on the page. */
-const USAGE_TABS = ['usage', 'plans', 'bank', 'sidebar'] as const
+const USAGE_TABS = ['usage', 'plans', 'sidebar'] as const
 type UsageTab = (typeof USAGE_TABS)[number]
 
 /** How many model sub-bars render under one provider bar. */
@@ -632,136 +587,6 @@ function totalOf(totals: UsageTokenTotals): number {
  * the artwork draw failure degrades to an error line and never takes the
  * section down.
  */
-function VoucherCard(props: { window?: UsageWindowSummary; observedSpend?: ObservedSpendView; loading?: boolean; error?: string; display?: SpendDisplay }): ReactNode {
-  const { window: ledger, observedSpend, loading, error, display } = props
-  const data = voucherData(ledger)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [drawError, setDrawError] = useState<string | undefined>(undefined)
-  const dataKey = data === undefined ? '' : `${data.from}|${data.to}|${data.tokens}|${data.calls}|${data.cost}`
-
-  useEffect(() => {
-    if (data === undefined) return
-    const voucher = data
-    let cancelled = false
-    loadVoucherArt().then((art) => {
-      if (cancelled) return
-      const canvas = canvasRef.current
-      if (canvas !== null) {
-        try {
-          drawVoucher(canvas, art, voucher)
-        } catch (error) {
-          if (!cancelled) setDrawError(error instanceof Error ? error.message : String(error))
-        }
-      }
-    }, (error) => {
-      if (!cancelled) setDrawError(error instanceof Error ? error.message : String(error))
-    })
-    return () => {
-      cancelled = true
-    }
-  // dataKey covers every field the draw and the buttons read.
-  }, [dataKey])
-
-  const onSave = (): void => {
-    const canvas = canvasRef.current
-    if (canvas === null || data === undefined) return
-    canvas.toBlob((blob) => {
-      if (blob === null) return
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `dsh-whale-voucher-${data.to}.png`
-      anchor.click()
-      window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
-    }, 'image/png')
-  }
-
-  const shareSupported = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function'
-  const onShare = (): void => {
-    const canvas = canvasRef.current
-    if (canvas === null || data === undefined || !shareSupported) return
-    canvas.toBlob(async (blob) => {
-      if (blob === null) return
-      const file = new File([blob], `dsh-whale-voucher-${data.to}.png`, { type: 'image/png' })
-      if (!navigator.canShare({ files: [file] })) return
-      try {
-        await navigator.share({ files: [file], title: t('usage.bank.title') })
-      } catch {
-        // A user-cancelled share sheet rejects; nothing to report.
-      }
-    }, 'image/png')
-  }
-
-  return (
-    <div className={styles.card} data-dsh-part="bank-card">
-      <span className={styles.cardTitle}>{t('usage.bank.title')}</span>
-      {error !== undefined
-        ? <span className={styles.errorLine}>{t('usage.day.error', { error })}</span>
-        : loading === true
-          ? <span className={styles.muted}>{t('usage.day.loading')}</span>
-          : data === undefined
-            ? <span className={styles.muted}>{t('usage.bank.noUsage')}</span>
-            : <>
-            <span className={styles.muted}>{t('usage.bank.hint')}</span>
-            <div className={styles.voucherPreview} data-dsh-part="voucher-preview">
-              <canvas ref={canvasRef} aria-label={t('usage.bank.title')} />
-            </div>
-            {drawError !== undefined && <span className={styles.errorLine}>{t('usage.bank.drawError', { error: drawError })}</span>}
-            <div className={styles.providerRow}>
-              <span className={styles.providerName}>{t('usage.bank.minted', { minted: formatDenomination(faceValue(data.tokens)), tokens: formatTokens(data.tokens) })}</span>
-              <span className={styles.providerTokens}>{t('usage.calls', { n: data.calls })}</span>
-            </div>
-            <span className={styles.muted}>
-              {observedSpend !== undefined
-                ? t('usage.bank.spend.observed', { cost: formatSpend(observedSpend.cny, display), since: formatDay(observedSpend.since) })
-                : t('usage.bank.spend.estimated', { cost: formatSpend(data.cost, display) })}
-            </span>
-            <span className={styles.muted}>{t('usage.bank.window', { from: data.from, to: data.to })}</span>
-            <div className={styles.buttonRow}>
-              <button type="button" className={styles.refreshBtn} onClick={onSave}>{t('usage.bank.save')}</button>
-              {shareSupported && <button type="button" className={styles.refreshBtn} onClick={onShare}>{t('usage.bank.share')}</button>}
-            </div>
-          </>}
-    </div>
-  )
-}
-
-function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): ReactNode {
-  const { provider, current } = props
-  return (
-    <div className={`${styles.card} ${styles.planCard}`} data-dsh-part="plan-card">
-      <div className={styles.planHead}>
-        <span className={styles.planName}>
-          {provider.displayName}
-          {current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
-          {provider.plan?.planName !== undefined ? ` · ${provider.plan.planName}` : ''}
-        </span>
-      </div>
-      {provider.error !== undefined && <span className={styles.errorLine}>{t('usage.provider.error', { error: provider.error })}</span>}
-      {provider.credential === 'none' && provider.plan === undefined
-        ? <span className={styles.muted}>{t('usage.balance.noCredential')}</span>
-        : provider.plan === undefined || provider.plan.windows.length === 0
-          ? <span className={styles.muted}>{t('usage.plan.noPlan')}</span>
-          : provider.plan.windows.map((window) => (
-            <div key={window.key} className={styles.windowRow} data-dsh-part="plan-window">
-              <span className={styles.windowLabel}>
-                <span>{window.name ?? t(`usage.plan.windows.${window.key}`)}</span>
-                <span>{window.percent !== undefined ? `${window.percent >= 10 ? Math.round(window.percent) : window.percent.toFixed(1)}%` : ''}</span>
-              </span>
-              {window.percent !== undefined && (
-                <span className={styles.bar}>
-                  <span className={toneClass(window.percent)} style={{ width: `${Math.min(100, Math.max(0, window.percent))}%`, display: 'block' }} />
-                </span>
-              )}
-              {window.resetsAt !== undefined && (
-                <span className={styles.resetLine}>{t('usage.plan.reset', { date: new Date(window.resetsAt).toLocaleString() })}</span>
-              )}
-            </div>
-          ))}
-    </div>
-  )
-}
-
 /** Money text for a spend cap: a symbol for USD/CNY, else the ISO code. */
 function spendMoney(value: number, currency: string): string {
   const code = currency.toUpperCase()

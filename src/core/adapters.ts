@@ -5,7 +5,7 @@
  * the service stays transport-only and every endpoint detail lives here.
  *
  * All probes run host-side (Node fetch); API keys never reach the browser.
- * @module @linxin666/dsh-usage/core/adapters
+ * @module @legifyx/dsh-usage/core/adapters
  */
 
 import type { PlanWindowView, QuotaMeterView, SpendLimitView } from './types.ts'

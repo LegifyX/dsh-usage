@@ -1,11 +1,11 @@
 {
-  "name": "@linxin666/dsh-usage",
-  "description": "Usage statistics plugin for the dsh web GUI: per-provider balance and coding-plan quota detection plus a live token usage ledger, with a compact price glance card above the sidebar's Settings row (LegifyX fork: signed-in account balance in every currency, deeprelay subscription meters, always-on peak marker)",
-  "version": "0.4.15-legifyx.12",
+  "name": "@legifyx/dsh-usage",
+  "description": "Standalone usage statistics for DeepSeek Harness: per-provider balances, plan quotas, spend currencies and a configurable sidebar glance card.",
+  "version": "0.5.0",
   "forkOf": "@linxin666/dsh-usage@0.4.15",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LegifyX/dsh-usage.git"
+    "url": "git+https://github.com/LegifyX/dsh-usage.git"
   },
   "icon": "icon.svg",
   "type": "module",

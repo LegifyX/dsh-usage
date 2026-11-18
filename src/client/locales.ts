@@ -1,7 +1,7 @@
 /**
  * dsh-usage locale dictionaries (zh/en). The zh dictionary is the key source;
  * `en` mirrors its full key set (packages/AGENTS.md bilingual discipline).
- * @module @linxin666/dsh-usage/client/locales
+ * @module @legifyx/dsh-usage/client/locales
  */
 
 /** Dictionary namespace this package registers. */
@@ -12,7 +12,6 @@ export const zh = {
   'usage.title': '使用统计',
   'usage.tab.usage': '用量',
   'usage.tab.plans': '个人套餐',
-  'usage.tab.bank': 'Token 银行',
   'usage.tab.sidebar': '侧边栏',
   'usage.sidebar.preview': '预览',
   'usage.refresh': '刷新',
@@ -75,17 +74,6 @@ export const zh = {
   'usage.config.pollIntervalSec': '轮询间隔（秒）',
   'usage.config.spendCurrency': '货币',
   'usage.config.cnyPerUsd': '汇率',
-  'usage.bank.title': '鲸元券',
-  'usage.bank.hint': '每用掉 100 万 tokens 铸造 1 鲸元，可以保存或分享这张票券。',
-  'usage.bank.noUsage': '暂无用量数据',
-  'usage.bank.minted': '累计铸造 {minted} 鲸元（{tokens} tokens）',
-  'usage.bank.spend.observed': '官方余额实测花费 {cost}（自 {since} 起）',
-  'usage.bank.spend.estimated': '消费估算：约 {cost}',
-  'usage.bank.window': '统计窗口 {from} ~ {to}',
-  'usage.bank.windowAll': '全部保留期',
-  'usage.bank.save': '保存图片',
-  'usage.bank.share': '分享',
-  'usage.bank.drawError': '票券生成失败：{error}',
   'usage.foot.cost': '今日消费',
   'usage.foot.noData': '今日暂无用量',
   'usage.foot.open': '打开使用统计设置',
@@ -134,7 +122,6 @@ export const en: Record<UsageKey, string> = {
   'usage.title': 'Usage Statistics',
   'usage.tab.usage': 'Usage',
   'usage.tab.plans': 'Plans',
-  'usage.tab.bank': 'Token Bank',
   'usage.tab.sidebar': 'Sidebar',
   'usage.sidebar.preview': 'Preview',
   'usage.refresh': 'Refresh',
@@ -197,17 +184,6 @@ export const en: Record<UsageKey, string> = {
   'usage.config.pollIntervalSec': 'Poll interval (seconds)',
   'usage.config.spendCurrency': 'Currency',
   'usage.config.cnyPerUsd': 'Exchange rate',
-  'usage.bank.title': 'Whale-yuan voucher',
-  'usage.bank.hint': 'Every million tokens mints one whale yuan; save or share the note.',
-  'usage.bank.noUsage': 'No usage data yet',
-  'usage.bank.minted': 'Minted {minted} whale yuan ({tokens} tokens)',
-  'usage.bank.spend.observed': 'Spent {cost} observed on the official balance (watching since {since})',
-  'usage.bank.spend.estimated': 'Estimated spend: about {cost}',
-  'usage.bank.window': 'Window {from} - {to}',
-  'usage.bank.windowAll': 'All retained days',
-  'usage.bank.save': 'Save image',
-  'usage.bank.share': 'Share',
-  'usage.bank.drawError': 'Failed to render the voucher: {error}',
   'usage.foot.cost': 'Today spend',
   'usage.foot.noData': 'No usage yet today',
   'usage.foot.open': 'Open usage statistics settings',

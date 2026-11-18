@@ -3,7 +3,7 @@
  * comma-separated provider id list; providers missing from it keep their
  * natural order after the listed ones, so a newly discovered provider lands
  * at the end instead of disappearing.
- * @module @linxin666/dsh-usage/client/order
+ * @module @legifyx/dsh-usage/client/order
  */
 
 /**

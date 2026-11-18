@@ -2,7 +2,7 @@
  * The usage page's settings card: the plugin switch and the three display
  * rows, written through the family card form so a pick lands at once and a
  * typed value after a pause, exactly as the other Web Extensions pages do.
- * @module @linxin666/dsh-usage/client/usage-settings-card
+ * @module @legifyx/dsh-usage/client/usage-settings-card
  */
 
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'

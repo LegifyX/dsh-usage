@@ -149,6 +149,16 @@ Four changes, all visible in the Usage card and the sidebar glance card:
     moved into the Sidebar tab too, so no shared settings row is left: every
     control belongs to exactly one tab.
 
+13. **Standalone package, Token Bank removed.** The package is now
+    `@legifyx/dsh-usage` (its own row, `dsh-usage`) instead of a fork that
+    re-pointed the bundle's `web-ui-usage` row, so it can be installed next to
+    the dsh-web bundle once that row is disabled. The Token Bank tab, its
+    voucher artwork (a 300 KB inline JPEG), the whale-yuan drawing module and
+    the host-side observed-spend watch were removed; the usage page is now
+    Usage / Plans / Sidebar. The client bundle shrank from ~538 KB to ~223 KB.
+    A package rename changes the client module id, which DSH resolves at boot:
+    restart the host once after switching names.
+
 ## Install
 
 ```powershell
