@@ -87,13 +87,16 @@ API key 通过 harness 的凭据接缝（`llm-pi-ai` 记录、`apiKeyEnv` 引用
 | MiniMax Coding Plan（国内/国际） | `GET /v1/api/openplatform/coding_plan/remains` | 5 小时、周 |
 | OpenCode Go | `GET /zen/go/v1/usage`（opencode.ai） | 滚动、周、月 |
 
+套餐与余额按路由的 API origin 匹配，而不是名字：任何指向提供方域名的路由都能识别，
+无论它叫什么；base URL 匹配不到任何适配器的路由会被视为其它提供方，而不会按 id 误认。
+
 套餐端点的形状与访问方式各不相同，我们也无法看到别人账户里的套餐数据。如需新增套餐，
 请提交 issue 或 PR，附上该提供方端点的示例响应（脱敏后）与路由 id：新增一个套餐只需
 一条适配器条目，但只能基于我们能够观察到的端点来实现。
 
 ## 提供方
 
-内置适配器按提供方路由 id 与 origin 匹配：
+内置适配器按路由的 **API origin** 匹配。只有未配置 base URL 时才回退到路由 id，因此改了名字的路由（如 `deeprelay-dshflash`）只要指向提供方自己的域名就能识别：
 
 | 类型 | 提供方 |
 | --- | --- |

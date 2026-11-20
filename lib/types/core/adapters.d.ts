@@ -140,6 +140,18 @@ export declare const DEEPRELAY_API_ORIGIN = "https://api.deeprelay.ai";
 export declare const PROVIDER_ADAPTERS: readonly ProviderAdapter[];
 /** Find the adapter serving a provider route key, if any. */
 export declare function adapterFor(provider: string): ProviderAdapter | undefined;
+/**
+ * Resolve the adapter for a route by its configured API origin. The endpoint
+ * identifies the account, so a route may be named anything (`deeprelay-dshflash`)
+ * and still gets its balance, plan or quota. The route id is only a fallback
+ * for routes that configure no base URL at all (catalog defaults): a route with
+ * a base URL that matches no adapter is a different provider, never the one its
+ * id happens to name.
+ * @param provider - the route id.
+ * @param baseURL - the route's configured base URL, if any.
+ * @returns the adapter serving that route, if one matches.
+ */
+export declare function adapterForRoute(provider: string, baseURL: string | undefined): ProviderAdapter | undefined;
 /** Origin of a configured base URL, or undefined when it cannot be parsed. */
 export declare function originOf(baseURL: string | undefined): string | undefined;
 /**

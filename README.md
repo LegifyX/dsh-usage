@@ -100,6 +100,11 @@ the complete list. Anything else stays unprobed.
 | MiniMax Coding Plan (CN / intl) | `GET /v1/api/openplatform/coding_plan/remains` | 5-hour, week |
 | OpenCode Go | `GET /zen/go/v1/usage` on opencode.ai | rolling, week, month |
 
+Plans and balances are matched by the route's API origin, not its name: any
+route pointing at the provider's host resolves, whatever it is called. A route
+whose base URL matches no adapter is treated as a different provider, not as
+the one its id happens to name.
+
 Plan endpoints differ in shape and access, and we cannot see another account's
 plan data. If you want a plan added, open an issue or a pull request with a
 redacted sample response from your provider's endpoint plus the route id; a new
@@ -108,7 +113,7 @@ observe.
 
 ## Providers
 
-Built-in adapters, matched by provider route id and origin:
+Built-in adapters, matched by the route's **API origin**. A route's id is only a fallback when it configures no base URL, so a renamed route (`deeprelay-dshflash`) still resolves as long as it points at the provider's own host:
 
 | Kind | Providers |
 | --- | --- |

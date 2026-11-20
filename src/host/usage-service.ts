@@ -15,7 +15,7 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
 import { withIdentityEncoding } from './http.ts'
-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, quotaAppliesToRoute, spendAppliesToRoute } from '../core/adapters.ts'
+import { adapterFor, adapterForRoute as resolveAdapter, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, quotaAppliesToRoute, spendAppliesToRoute } from '../core/adapters.ts'
 import type { BalanceParse, PlanParse, ProviderAdapter, QuotaParse, SpendParse } from '../core/adapters.ts'
 import { discoverUsage, shapeUrl, USAGE_SHAPES, isLoopbackBaseURL } from '../core/discovery.ts'
 import type { UsageShape } from '../core/discovery.ts'
@@ -395,7 +395,7 @@ export class UsageService {
     if (provider === undefined) return { ...this.current }
     let snapshot = this.snapshots.get(provider)
     if (snapshot === undefined) {
-      const family = this.adapterForRoute(provider)
+      const family = adapterFor(provider)
       if (family !== undefined) {
         for (const [id, candidate] of this.snapshots) {
           if (adapterFor(id) === family) {
@@ -439,10 +439,10 @@ export class UsageService {
    * together.
    */
   private familyUsageToday(provider: string): UsageTokenTotals {
-    const family = this.adapterForRoute(provider)
+    const family = adapterFor(provider)
     let merged = emptyTotals()
     for (const row of this.daySummary(localDateKey(Date.now())).providers) {
-      const same = family === undefined ? row.provider === provider : this.adapterForRoute(row.provider) === family
+      const same = family === undefined ? row.provider === provider : adapterFor(row.provider) === family
       if (same) merged = addTotals(merged, row.totals)
     }
     return merged
@@ -641,7 +641,7 @@ export class UsageService {
    * fact.
    */
   private adapterForRoute(provider: string): ProviderAdapter | undefined {
-    const fixed = adapterFor(provider)
+    const fixed = resolveAdapter(provider, this.routeBaseUrl(provider))
     if (fixed !== undefined) return fixed
     const record = this.probes[provider]
     if (record === undefined || record.ok !== true || record.shape === undefined || record.kind === undefined) return undefined
@@ -665,7 +665,7 @@ export class UsageService {
    * the cache. Routes without a credential or a usable base URL are skipped.
    */
   private async ensureAdapter(route: ProviderRoute): Promise<ProviderAdapter | undefined> {
-    const fixed = adapterFor(route.id)
+    const fixed = resolveAdapter(route.id, this.routeBaseUrl(route.id))
     if (fixed !== undefined) return fixed
     const baseURL = this.routeBaseUrl(route.id)
     if (baseURL === undefined || baseURL.trim() === '' || isLoopbackBaseURL(baseURL)) return undefined

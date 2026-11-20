@@ -366,6 +366,7 @@ function moonshotBalance(host: string, currency: string, ids: readonly string[])
     ids,
     displayName: 'Moonshot AI',
     balance: {
+      origin: `https://${host}`,
       build: ({ apiKey }) => ({ url: `https://${host}/v1/users/me/balance`, headers: bearer(apiKey) }),
       parse: (status, body) => {
         if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -384,6 +385,7 @@ const KIMI_CODING: ProviderAdapter = {
   ids: ['kimi-coding'],
   displayName: 'Kimi For Coding',
   plan: {
+    origin: 'https://api.kimi.com',
     build: ({ apiKey }) => ({ url: 'https://api.kimi.com/coding/v1/usages', headers: bearer(apiKey) }),
     parse: (status, body) => {
       if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -448,6 +450,7 @@ function glmPlan(host: string, ids: readonly string[]): ProviderAdapter {
     ids,
     displayName: 'GLM Coding Plan',
     plan: {
+      origin: `https://${host}`,
       build: ({ apiKey }) => ({
         url: `https://${host}/api/monitor/usage/quota/limit`,
         headers: { authorization: apiKey, 'accept-language': 'en-US,en' },
@@ -494,6 +497,7 @@ const OPENCODE_GO: ProviderAdapter = {
   ids: ['opencode-go'],
   displayName: 'OpenCode Go',
   plan: {
+    origin: 'https://opencode.ai',
     build: ({ apiKey }) => ({ url: 'https://opencode.ai/zen/go/v1/usage', headers: bearer(apiKey) }),
     parse: (status, body) => {
       if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -525,6 +529,7 @@ function minimaxPlan(host: string, ids: readonly string[]): ProviderAdapter {
     ids,
     displayName: 'MiniMax Coding Plan',
     plan: {
+      origin: `https://${host}`,
       build: ({ apiKey }) => ({ url: `https://${host}/v1/api/openplatform/coding_plan/remains`, headers: bearer(apiKey) }),
       parse: (status, body) => {
         if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -556,6 +561,7 @@ const OPENROUTER: ProviderAdapter = {
   ids: ['openrouter'],
   displayName: 'OpenRouter',
   balance: {
+    origin: 'https://openrouter.ai',
     build: ({ apiKey }) => ({ url: 'https://openrouter.ai/api/v1/credits', headers: bearer(apiKey) }),
     parse: (status, body) => {
       if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -574,6 +580,7 @@ function siliconFlow(host: string, ids: readonly string[], currency: string): Pr
     ids,
     displayName: 'SiliconFlow',
     balance: {
+      origin: `https://${host}`,
       build: ({ apiKey }) => ({ url: `https://${host}/v1/user/info`, headers: bearer(apiKey) }),
       parse: (status, body) => {
         if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -591,6 +598,7 @@ const ZENMUX: ProviderAdapter = {
   ids: ['zenmux'],
   displayName: 'ZenMux',
   balance: {
+    origin: 'https://zenmux.ai',
     build: ({ apiKey }) => ({ url: 'https://zenmux.ai/api/v1/management/payg/balance', headers: bearer(apiKey) }),
     parse: (status, body) => {
       if (status !== 200 || typeof body !== 'object' || body === null) return undefined
@@ -614,6 +622,7 @@ const OPENAI_CODEX: ProviderAdapter = {
   ids: ['openai-codex'],
   displayName: 'Codex (ChatGPT 订阅)',
   plan: {
+    origin: 'https://chatgpt.com',
     build: ({ apiKey, accountId }) => ({
       url: 'https://chatgpt.com/backend-api/wham/usage',
       headers: {
@@ -689,6 +698,30 @@ export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
 /** Find the adapter serving a provider route key, if any. */
 export function adapterFor(provider: string): ProviderAdapter | undefined {
   return PROVIDER_ADAPTERS.find((adapter) => adapter.ids.includes(provider))
+}
+
+/**
+ * Resolve the adapter for a route by its configured API origin. The endpoint
+ * identifies the account, so a route may be named anything (`deeprelay-dshflash`)
+ * and still gets its balance, plan or quota. The route id is only a fallback
+ * for routes that configure no base URL at all (catalog defaults): a route with
+ * a base URL that matches no adapter is a different provider, never the one its
+ * id happens to name.
+ * @param provider - the route id.
+ * @param baseURL - the route's configured base URL, if any.
+ * @returns the adapter serving that route, if one matches.
+ */
+export function adapterForRoute(provider: string, baseURL: string | undefined): ProviderAdapter | undefined {
+  const origin = originOf(baseURL)
+  if (origin !== undefined) {
+    return PROVIDER_ADAPTERS.find((adapter) =>
+      adapter.balance?.origin === origin
+      || adapter.plan?.origin === origin
+      || adapter.quota?.origin === origin
+      || adapter.spend?.origin === origin)
+  }
+  if (baseURL !== undefined && baseURL.trim() !== '') return undefined
+  return adapterFor(provider)
 }
 
 /** Origin of a configured base URL, or undefined when it cannot be parsed. */

@@ -45,6 +45,14 @@ Usage / Plans / Sidebar.
   one row per balance / per plan in the sidebar card.
 - **24-hour clock** for the sidebar and peak labels, following the DSH locale.
 
+### Fixed
+
+- Adapters resolve by the route's **API origin**, not its id, so a renamed
+  provider route (`deeprelay-dshflash`) gets its balance, plan or quota. The id
+  is only a fallback for routes without a base URL; a route with an unmatched
+  base URL is treated as a different provider. Family use-aggregation stays
+  id-based so two live accounts on one origin do not merge.
+
 ### Changed
 
 - A plan is one concept: billing windows (`plan`) and token quotas (`quota`)
