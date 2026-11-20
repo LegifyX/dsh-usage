@@ -13,35 +13,34 @@
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
 
-## 安装（独立版）
+## 安装
 
-1. 在 profile（例如 `~/.dsh/profiles/web/package.json`）中加入依赖：
+本包是一个 bundle：`dsh.bundle.patch` 指向 `cordis.patch.yml`，由它自行插入
+`dsh-usage` 行；`dsh.client` 声明 Web 扩展页面。可在 Web UI 的插件管理器中安装，
+或在命令行执行：
 
-   ```json
-   { "dependencies": { "@legifyx/dsh-usage": "github:LegifyX/dsh-usage" } }
-   ```
+```bash
+dsh plugin --profile web add github:LegifyX/dsh-usage#<commit>
+```
 
-   本地检出可用 `"link:./plugins/dsh-usage"`。
+然后在 设置 → 插件 中启用 `dsh-usage` bundle。固定到具体 commit，升级时更可控。
 
-2. 若已安装 `dsh-web` 套装，先禁用其自带的用量行，避免页面重复挂载：
+若已安装 `dsh-web` 套装，它自带一个用量行（`web-ui-usage`），请禁用以避免页面
+重复挂载：
 
-   ```yaml
-   - id: web-ui-usage
-     disabled: true
-   ```
+```yaml
+- id: web-ui-usage
+  disabled: true
+```
 
-3. 插入独立插件的行：
+如果以前的手动安装留下过 `- insert: dsh-usage` 行或 link 依赖，请删除：现在由
+bundle patch 自行插入该行，同 id 的第二行会让插件挂载两次。
 
-   ```yaml
-   - insert:
-       - id: dsh-usage
-         name: '@legifyx/dsh-usage'
-   ```
+安装后需重启一次宿主，以加载补丁行与客户端模块清单。之后修改 `lib/client.js`
+只需刷新页面，修改 `lib/index.js` 仍需重启。
 
-4. **重启一次宿主进程。** DSH 在启动时解析客户端模块 id，新包名要到下次启动才会被
-   提供；之后本插件的改动能正常热更新。
-
-插件无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用。
+无需其它配置：余额与套餐来自 profile 中 `llm-pi-ai` 的路由及其凭据引用，并按
+API origin 匹配。
 
 ## 功能
 

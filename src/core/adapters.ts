@@ -807,9 +807,9 @@ export function quotaAppliesToRoute(adapter: ProviderAdapter, baseURL: string | 
  * decisions read `adapterFor()` instead, so the two never widen together
  * (issue #1772).
  */
-export function isDeepSeekProviderRoute(provider: string): boolean {
-  if (adapterFor(provider) === DEEPSEEK) return true
-  return DEEPSEEK.familyOnlyIds?.includes(provider) === true
+export function isDeepSeekProviderRoute(provider: string, baseURL?: string): boolean {
+  if (DEEPSEEK.familyOnlyIds?.includes(provider) === true) return true
+  return adapterForRoute(provider, baseURL) === DEEPSEEK
 }
 
 /**

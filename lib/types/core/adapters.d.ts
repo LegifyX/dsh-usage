@@ -206,7 +206,7 @@ export declare function quotaAppliesToRoute(adapter: ProviderAdapter, baseURL: s
  * decisions read `adapterFor()` instead, so the two never widen together
  * (issue #1772).
  */
-export declare function isDeepSeekProviderRoute(provider: string): boolean;
+export declare function isDeepSeekProviderRoute(provider: string, baseURL?: string): boolean;
 /**
  * Best-effort human message from a provider error body, for the per-provider
  * error line. Never throws; truncated to one short sentence.

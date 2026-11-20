@@ -336,8 +336,10 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   // session (the current route, or spend recorded under one today). It
   // describes the pricing window now, so a past day's card drops it.
   const deepseekPeriod = deepseekPeriodAt(Date.now())
-  const deepseekVisible = isToday && ((current.provider !== undefined && isDeepSeekProviderRoute(current.provider))
-    || snapshot.usage.today.providers.some((row) => isDeepSeekProviderRoute(row.provider)))
+  const isDeepSeek = (id: string): boolean =>
+    snapshot.providers.find((provider) => provider.provider === id)?.deepseekFamily ?? isDeepSeekProviderRoute(id)
+  const deepseekVisible = isToday && ((current.provider !== undefined && isDeepSeek(current.provider))
+    || snapshot.usage.today.providers.some((row) => isDeepSeek(row.provider)))
   // Plans tab: only configured routes with a real coding-plan/subscription
   // adapter (planSupported; an older host without the flag falls back to "has
   // a plan fact"). Balance-only providers (DeepSeek, ZenMux, ...) and

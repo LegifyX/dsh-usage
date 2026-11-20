@@ -178,6 +178,8 @@ export interface ProviderSnapshotView {
     quotaSupported?: boolean;
     /** A spend-cap adapter (money over a window) exists for this route. */
     spendSupported?: boolean;
+    /** The route prices against the official DeepSeek family (matched by API origin). */
+    deepseekFamily?: boolean;
     balance?: BalanceView;
     /**
      * Every currency the route's account reports, CNY and USD first.

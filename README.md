@@ -15,38 +15,38 @@ English | [中文](README.zh.md)
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
 
-## Install (standalone)
+## Install
 
-1. Add the package to the profile (e.g. `~/.dsh/profiles/web/package.json`):
+The package is a bundle: `dsh.bundle.patch` names `cordis.patch.yml`, which
+inserts the `dsh-usage` row itself, and `dsh.client` declares the Web
+Extensions page. Install it from the Plugin Manager in the Web UI, or from a
+shell:
 
-   ```json
-   { "dependencies": { "@legifyx/dsh-usage": "github:LegifyX/dsh-usage" } }
-   ```
+```bash
+dsh plugin --profile web add github:LegifyX/dsh-usage#<commit>
+```
 
-   A local checkout can use `"link:./plugins/dsh-usage"` instead.
+then enable the `dsh-usage` bundle in Settings → Plugins. Pinning the commit
+keeps an update an explicit step.
 
-2. If the `dsh-web` bundle is installed, disable its own usage row so the page
-   mounts once:
+If the `dsh-web` bundle is installed it also carries a usage row
+(`web-ui-usage`); disable that row so the page mounts once:
 
-   ```yaml
-   - id: web-ui-usage
-     disabled: true
-   ```
+```yaml
+- id: web-ui-usage
+  disabled: true
+```
 
-3. Insert the standalone row:
+If an earlier manual install left a `- insert: dsh-usage` row (or a link
+dependency) in the profile, remove it: the bundle patch now inserts that row
+itself, and a second row with the same id would mount the plugin twice.
 
-   ```yaml
-   - insert:
-       - id: dsh-usage
-         name: '@legifyx/dsh-usage'
-   ```
-
-4. Restart the host once. DSH resolves its client-module ids at boot, so a new
-   package name is not served until the next start; after that, this package's
-   edits hot-reload like any other plugin.
+Restart the host once after installing so the patch row and the client module
+manifest load. Later `lib/client.js` changes need only a page refresh;
+`lib/index.js` changes still need a restart.
 
 No other configuration is needed: balances and plans come from the profile's
-`llm-pi-ai` routes and the credentials they name.
+`llm-pi-ai` routes and the credentials they name, matched by API origin.
 
 ## What it does
 

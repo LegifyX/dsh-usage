@@ -329,6 +329,8 @@ export class UsageService {
         credential: snapshot?.credential ?? 'none',
         supported: route.id === 'deepseek-account'
           || (adapter !== undefined && (adapter.balance !== undefined || adapter.plan !== undefined || adapter.quota !== undefined || adapter.spend !== undefined)),
+        // Whether this route prices against the official DeepSeek family.
+        deepseekFamily: isDeepSeekProviderRoute(route.id, this.routeBaseUrl(route.id)),
         // The signed-in account route has no adapter of its own (familyOnly),
         // but probeAccountBalance() fills its balance, so the row is a real
         // balance row rather than an unsupported one.
@@ -481,7 +483,7 @@ export class UsageService {
         if (usage === undefined) return
         const route = this.sessionRoutes.get(session)
         if (route === undefined || route.provider === '') return
-        foldUsage(this.ledger, Date.now(), route.provider, route.model || 'unknown', this.totalsFrom(usage, route.provider, route.model || 'unknown', Date.now()))
+        foldUsage(this.ledger, Date.now(), route.provider, route.model || 'unknown', this.totalsFrom(usage, route.provider, route.model || 'unknown', Date.now(), this.routeBaseUrl(route.provider)))
         this.scheduleFlush()
       }
     } catch {
@@ -494,7 +496,7 @@ export class UsageService {
    * DeepSeek official family is priced at the fold instant (its billing
    * period is time-of-day); other families stay unpriced (cost 0).
    */
-  private totalsFrom(usage: TokenUsage, provider: string, model: string, atMs: number): UsageTokenTotals {
+  private totalsFrom(usage: TokenUsage, provider: string, model: string, atMs: number, baseURL: string | undefined): UsageTokenTotals {
     const totals = emptyTotals()
     totals.inputTokens = usage.inputTokens
     totals.outputTokens = usage.outputTokens
@@ -502,7 +504,7 @@ export class UsageService {
     totals.cacheWriteTokens = usage.cacheWriteTokens ?? 0
     totals.reasoningTokens = usage.reasoningTokens ?? 0
     totals.calls = 1
-    if (isDeepSeekProviderRoute(provider)) {
+    if (isDeepSeekProviderRoute(provider, baseURL)) {
       totals.cost = deepseekModelSpend(model, totals, atMs)
       totals.costUsd = deepseekModelSpendUsd(model, totals, atMs)
     }
@@ -975,7 +977,7 @@ export class UsageService {
     }
     try {
       const profile = this.piAiProfile(provider)
-      const envName = profile?.apiKeyEnv ?? (isDeepSeekProviderRoute(provider) ? this.deepseekApiKeyEnv() : undefined)
+      const envName = profile?.apiKeyEnv ?? (isDeepSeekProviderRoute(provider, this.routeBaseUrl(provider)) ? this.deepseekApiKeyEnv() : undefined)
       if (typeof envName === 'string' && envName !== '') {
         const resolved = await credentials.resolve(credentialRef(envName))
         if (resolved?.value !== undefined && resolved.value !== '') return { kind: 'env', key: resolved.value }

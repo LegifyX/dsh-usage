@@ -1,7 +1,7 @@
 {
   "name": "@legifyx/dsh-usage",
   "description": "Standalone usage statistics for DeepSeek Harness: per-provider balances, plan quotas, spend currencies and a configurable sidebar glance card.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "forkOf": "@linxin666/dsh-usage@0.4.15",
   "repository": {
     "type": "git",
@@ -10,7 +10,8 @@
   "icon": "icon.svg",
   "type": "module",
   "engines": {
-    "node": ">=24.9.0"
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.2-rc.1"
   },
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -26,7 +27,8 @@
     "./src/*": "./src/*",
     "./locale/en.json": "./locale/en.json",
     "./locale/zh.json": "./locale/zh.json",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./icon": "./icon.svg"
   },
   "files": [
     "lib/**/*.js",
@@ -36,13 +38,11 @@
     "src",
     "cordis.patch.yml",
     "icon.svg",
-    "locale"
+    "locale",
+    "CHANGELOG.md"
   ],
   "license": "Apache-2.0",
   "dsh": {
-    "engines": {
-      "dsh": ">=0.2.2-rc.1"
-    },
     "bundle": {
       "patch": "./cordis.patch.yml"
     },

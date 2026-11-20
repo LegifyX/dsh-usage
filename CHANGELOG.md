@@ -3,6 +3,17 @@
 Changes in this standalone package relative to upstream
 `@linxin666/dsh-usage` (from `zhu1090093659/dsh-web`).
 
+## 0.6.0
+
+- Bundle metadata for Plugin Manager installs: top-level `engines.dsh` (the
+  field DSH actually reads), `icon`, `./icon` export, `CHANGELOG.md` in the
+  published files.
+- DeepSeek spend pricing is origin-aware: a renamed route pointing at
+  `api.deepseek.com` is priced, and a route with an unrelated base URL is not,
+  even if its id says `deepseek`.
+- The overview publishes `deepseekFamily` per provider so the peak badge
+  follows the same rule.
+
 ## 0.5.0
 
 ### Standalone packaging
