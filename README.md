@@ -45,6 +45,11 @@ Restart the host once after installing so the patch row and the client module
 manifest load. Later `lib/client.js` changes need only a page refresh;
 `lib/index.js` changes still need a restart.
 
+Keep the `dsh-web` suite and its `@linxin666/*` client packages on versions whose
+`@deepseek-ai/dsh` peer range includes your runtime. The loader disables a row
+whose package requirements are unmet, which can hide the Web Extensions parent
+page this plugin's settings page seats into.
+
 No other configuration is needed: balances and plans come from the profile's
 `llm-pi-ai` routes and the credentials they name, matched by API origin.
 
@@ -160,9 +165,10 @@ Costs are stamped at fold time from the published DeepSeek peak/off-peak price
 book. Two books are kept: CNY (the ledger's stored value) and USD (`costUsd`,
 priced independently, not converted). Peak windows are Beijing-time weekday
 09:00-12:00 and 14:00-18:00; the published Chinese public-holiday table marks
-holiday weekdays off-peak. Only the official DeepSeek family is priced; relay
-traffic stays unpriced (`0`), and unknown DeepSeek model ids take the
-flash-class row. A price-book change applies from the moment it ships, not
+holiday weekdays off-peak. Only the official DeepSeek family is priced — matched
+by the route's API origin, so a renamed route pointed at `api.deepseek.com` is
+priced while one with an unrelated base URL is not. Relay traffic stays
+unpriced (`0`), and unknown DeepSeek model ids take the flash-class row. A price-book change applies from the moment it ships, not
 retroactively.
 
 ## Data files
